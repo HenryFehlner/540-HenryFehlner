@@ -5,6 +5,17 @@
 
 #include <sstream>
 
+// Include ImGui files for input
+#include "ImGui/imgui_impl_win32.h"
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
+	HWND hWnd,
+	UINT msg,
+	WPARAM wParam,
+	LPARAM lParam);
+
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx11.h"
+
 namespace Window
 {
 	// Annonymous namespace to hold variables
@@ -55,7 +66,7 @@ bool Window::IsMinimized() { return isMinimized; }
 // resizeCallback  - The function to call when the window resizes
 // --------------------------------------------------------
 HRESULT Window::Create(
-	HINSTANCE appInstance,
+	HINSTANCE appInstance,	// The actual application
 	unsigned int width, 
 	unsigned int height, 
 	std::wstring titleBarText,
@@ -253,6 +264,10 @@ void Window::CreateConsoleWindow(int bufferLines, int bufferColumns, int windowL
 // --------------------------------------------------------
 LRESULT Window::ProcessMessage(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
+	// Call ImGui's message handler and return early if necessary
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, uMsg, wParam, lParam))
+		return true;
+
 	// Check the incoming message and handle any we care about
 	switch (uMsg)
 	{

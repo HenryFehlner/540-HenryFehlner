@@ -7,12 +7,23 @@
 
 #include <DirectXMath.h>
 
+#include "ImGui/imgui.h"
+#include "ImGui/imgui_impl_dx11.h"
+#include "ImGui/imgui_impl_win32.h"
+
 // Needed for a helper function to load pre-compiled shader files
 #pragma comment(lib, "d3dcompiler.lib")
 #include <d3dcompiler.h>
 
 // For the DirectX Math library
 using namespace DirectX;
+
+// ImGui variables
+static float bgColor[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+static bool showDemoWindow = false;
+static int sliderVal = 0;
+static float dragVal = 0.0;
+const int listItems[5] = { 10, 20, 30, 40, 50 };
 
 // --------------------------------------------------------
 // The constructor is called after the window and graphics API
@@ -47,6 +58,17 @@ Game::Game()
 		Graphics::Context->VSSetShader(vertexShader.Get(), 0, 0);
 		Graphics::Context->PSSetShader(pixelShader.Get(), 0, 0);
 	}
+
+	// ImGui init
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(Window::Handle());
+	ImGui_ImplDX11_Init(Graphics::Device.Get(), Graphics::Context.Get());
+
+	// Pick a style
+	ImGui::StyleColorsDark();
+	//ImGui::StyleColorsLight();
+	//ImGui::StyleColorsClassic();
 }
 
 
@@ -58,7 +80,10 @@ Game::Game()
 // --------------------------------------------------------
 Game::~Game()
 {
-
+	// ImGui clean up
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 }
 
 
@@ -241,6 +266,10 @@ void Game::OnResize()
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
+	// Update ImGui
+	ImGuiNewFrameUpdate(deltaTime);
+	ImGuiBuildUI();
+
 	// Example input checking: Quit if the escape key is pressed
 	if (Input::KeyDown(VK_ESCAPE))
 		Window::Quit();
@@ -257,8 +286,8 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - At the beginning of Game::Draw() before drawing *anything*
 	{
 		// Clear the back buffer (erase what's on screen) and depth buffer
-		const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
-		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	color);
+		//const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	bgColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
@@ -288,6 +317,10 @@ void Game::Draw(float deltaTime, float totalTime)
 			0);    // Offset to add to each index when looking up vertices
 	}
 
+	// Draw ImGui
+	ImGui::Render();	// Turns the frame's UI into tris to be rendered
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());	// Draw to the screen
+
 	// Frame END
 	// - These should happen exactly ONCE PER FRAME
 	// - At the very end of the frame (after drawing *everything*)
@@ -307,4 +340,59 @@ void Game::Draw(float deltaTime, float totalTime)
 }
 
 
+// Pass ImGui new frame information at the start of update
+void Game::ImGuiNewFrameUpdate(float deltaTime)
+{
+	// Give fresh data to ImGui
+	ImGuiIO& io = ImGui::GetIO();
+	io.DeltaTime = deltaTime;
+	io.DisplaySize.x = (float)Window::Width();
+	io.DisplaySize.y = (float)Window::Height();
 
+	//Reset the frame
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	// Determine new input capture
+	Input::SetKeyboardCapture(io.WantCaptureKeyboard);
+	Input::SetMouseCapture(io.WantCaptureMouse);
+
+	// Show demo window
+	//ImGui::ShowDemoWindow();
+}
+
+// Build the ImGui UI, called after new frame data is passed to ImGui
+void Game::ImGuiBuildUI()
+{
+	// Begin a new window
+	ImGui::Begin("My First ImGui Window");
+
+	// Show fps
+	ImGui::Text("Framerate: %f fps", ImGui::GetIO().Framerate);
+
+	// Show window size
+	ImGui::Text("Window Size: %dx%dpx", Window::Width(), Window::Height());
+
+	// BG color picker
+	ImGui::ColorEdit4("Background Color", bgColor);
+
+	// Show demo window
+	if (ImGui::Button("Show/Hide Demo Window"))
+		showDemoWindow = !showDemoWindow;
+	if (showDemoWindow)
+		ImGui::ShowDemoWindow();
+
+	// Dummy slider
+	ImGui::SliderInt("I'm a slider!", &sliderVal, -5, 5);
+
+	// Drag float
+	ImGui::DragFloat("Drag me!", &dragVal, 0.001f);
+
+	// Bullet points
+	ImGui::BulletText("I'm the first bullet point!");
+	ImGui::BulletText("I'm the second bullet point!");
+	ImGui::BulletText("I'm the third bullet point!");
+
+	ImGui::End();
+}

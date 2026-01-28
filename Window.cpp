@@ -66,7 +66,7 @@ bool Window::IsMinimized() { return isMinimized; }
 // resizeCallback  - The function to call when the window resizes
 // --------------------------------------------------------
 HRESULT Window::Create(
-	HINSTANCE appInstance,	// The actual application
+	HINSTANCE appInstance,
 	unsigned int width, 
 	unsigned int height, 
 	std::wstring titleBarText,

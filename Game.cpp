@@ -20,7 +20,6 @@ using namespace DirectX;
 
 // ImGui variables
 static float bgColor[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
-static bool showDemoWindow = false;
 static int sliderVal = 0;
 static float dragVal = 0.0;
 const int listItems[5] = { 10, 20, 30, 40, 50 };
@@ -35,7 +34,7 @@ Game::Game()
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
 	LoadShaders();
-	CreateGeometry();
+	//CreateGeometry();
 
 	// Set initial graphics API state
 	//  - These settings persist until we change them
@@ -69,6 +68,53 @@ Game::Game()
 	ImGui::StyleColorsDark();
 	//ImGui::StyleColorsLight();
 	//ImGui::StyleColorsClassic();
+
+	// Create points & colors for meshes
+	XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+	XMFLOAT4 black = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+	XMFLOAT4 gray = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
+
+	// Triangle mesh
+	Vertex triangleVertices[] =
+	{
+		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
+		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
+		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green }
+	};
+	unsigned int triangleIndices[] = { 0, 1, 2 };
+	//triangleMesh = std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices));
+	meshVec.push_back(std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices), "Triangle"));
+
+	// Quad mesh
+	Vertex quadVertices[] =
+	{
+		{ XMFLOAT3(-0.25f - 0.5f, +0.0f + 0.5f, +0.0f), blue },		// Adding 0.5 to offset it, ugly but it works
+		{ XMFLOAT3(+0.0f - 0.5f, +0.25f + 0.5f, +0.0f), red },
+		{ XMFLOAT3(+0.0f - 0.5f, +0.0f + 0.5f, +0.0f), red },
+		{ XMFLOAT3(-0.25f - 0.5f, +0.25f + 0.5f, +0.0f), blue }
+	};
+	unsigned int quadIndices[] = { 0, 1, 2,   0, 3, 1 };
+	//quadMesh = std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices));
+	meshVec.push_back(std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices), "Quad"));
+
+	// Weird mesh
+	Vertex weirdVertices[] =
+	{
+		{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+		{ XMFLOAT3(+0.25f + 0.5f, +0.125f + 0.5f, +0.0f), black },
+		{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+		{ XMFLOAT3(-0.125f + 0.5f, +0.25f + 0.5f, +0.0f), black },
+
+		{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+		{ XMFLOAT3(+0.25f + 0.5f, -0.125f + 0.5f, +0.0f), black },
+		{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+		{ XMFLOAT3(-0.125f + 0.5f, -0.25f + 0.5f, +0.0f), black }
+	};
+	unsigned int weirdIndices[] = { 0, 1, 2,   0, 3, 1,   4, 6, 5,   4, 5, 7 };
+	//weirdMesh = std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices));
+	meshVec.push_back(std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices), "The weird one"));
 }
 
 
@@ -161,6 +207,7 @@ void Game::LoadShaders()
 // --------------------------------------------------------
 // Creates the geometry we're going to draw
 // --------------------------------------------------------
+/*
 void Game::CreateGeometry()
 {
 	// Create some temporary variables to represent colors
@@ -249,6 +296,7 @@ void Game::CreateGeometry()
 		Graphics::Device->CreateBuffer(&ibd, &initialIndexData, indexBuffer.GetAddressOf());
 	}
 }
+*/
 
 
 // --------------------------------------------------------
@@ -275,7 +323,6 @@ void Game::Update(float deltaTime, float totalTime)
 		Window::Quit();
 }
 
-
 // --------------------------------------------------------
 // Clear the screen, redraw everything, present to the user
 // --------------------------------------------------------
@@ -286,35 +333,18 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - At the beginning of Game::Draw() before drawing *anything*
 	{
 		// Clear the back buffer (erase what's on screen) and depth buffer
-		//const float color[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	bgColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 
+	
 	// DRAW geometry
-	// - These steps are generally repeated for EACH object you draw
-	// - Other Direct3D calls will also be necessary to do more complex things
+	//triangleMesh->Draw(deltaTime, totalTime);
+	//quadMesh->Draw(deltaTime, totalTime);
+	//weirdMesh->Draw(deltaTime, totalTime);
+	for (unsigned int i = 0; i < meshVec.size(); ++i)
 	{
-		// Set buffers in the input assembler (IA) stage
-		//  - Do this ONCE PER OBJECT, since each object may have different geometry
-		//  - For this demo, this step *could* simply be done once during Init()
-		//  - However, this needs to be done between EACH DrawIndexed() call
-		//     when drawing different geometry, so it's here as an example
-		UINT stride = sizeof(Vertex);
-		UINT offset = 0;
-		Graphics::Context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-		Graphics::Context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-
-		// Tell Direct3D to draw
-		//  - Begins the rendering pipeline on the GPU
-		//  - Do this ONCE PER OBJECT you intend to draw
-		//  - This will use all currently set Direct3D resources (shaders, buffers, etc)
-		//  - DrawIndexed() uses the currently set INDEX BUFFER to look up corresponding
-		//     vertices in the currently set VERTEX BUFFER
-		Graphics::Context->DrawIndexed(
-			3,     // The number of indices to use (we could draw a subset if we wanted)
-			0,     // Offset to the first index we want to use
-			0);    // Offset to add to each index when looking up vertices
+		meshVec[i]->Draw(deltaTime, totalTime);
 	}
 
 	// Draw ImGui
@@ -366,33 +396,39 @@ void Game::ImGuiNewFrameUpdate(float deltaTime)
 void Game::ImGuiBuildUI()
 {
 	// Begin a new window
-	ImGui::Begin("My First ImGui Window");
+	ImGui::Begin("Inspector");
 
-	// Show fps
-	ImGui::Text("Framerate: %f fps", ImGui::GetIO().Framerate);
+	// App Info
+	if (ImGui::TreeNode("App Details"))
+	{
+		// Show fps
+		ImGui::Text("Framerate: %f fps", ImGui::GetIO().Framerate);
 
-	// Show window size
-	ImGui::Text("Window Size: %dx%dpx", Window::Width(), Window::Height());
+		// Show window size
+		ImGui::Text("Window Size: %dx%dpx", Window::Width(), Window::Height());
 
-	// BG color picker
-	ImGui::ColorEdit4("Background Color", bgColor);
+		// BG color picker
+		ImGui::ColorEdit4("BG Color", bgColor);
 
-	// Show demo window
-	if (ImGui::Button("Show/Hide Demo Window"))
-		showDemoWindow = !showDemoWindow;
-	if (showDemoWindow)
-		ImGui::ShowDemoWindow();
+		ImGui::TreePop();
+	}
 
-	// Dummy slider
-	ImGui::SliderInt("I'm a slider!", &sliderVal, -5, 5);
+	// Mesh info tree
+	if (ImGui::TreeNode("Meshes"))
+	{
+		for (unsigned int i = 0; i < meshVec.size(); ++i)
+		{
+			if (ImGui::TreeNode(meshVec[i]->GetName().c_str()))
+			{
+				ImGui::Text("Triangles:"); ImGui::SameLine(); ImGui::Text(std::to_string(meshVec[i]->GetIndexCount() / 3).c_str());
+				ImGui::Text("Vertices:"); ImGui::SameLine(); ImGui::Text(std::to_string(meshVec[i]->GetVertexCount()).c_str());
+				ImGui::Text("Indices:"); ImGui::SameLine(); ImGui::Text(std::to_string(meshVec[i]->GetIndexCount()).c_str());
+				ImGui::TreePop();
+			}
+		}
+		ImGui::TreePop();
+	}
 
-	// Drag float
-	ImGui::DragFloat("Drag me!", &dragVal, 0.001f);
-
-	// Bullet points
-	ImGui::BulletText("I'm the first bullet point!");
-	ImGui::BulletText("I'm the second bullet point!");
-	ImGui::BulletText("I'm the third bullet point!");
-
+	// End ImGui creation
 	ImGui::End();
 }

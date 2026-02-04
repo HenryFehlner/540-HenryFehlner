@@ -4,6 +4,7 @@
 #include "Input.h"
 #include "PathHelpers.h"
 #include "Window.h"
+#include "BufferStructs.h"
 
 #include <DirectXMath.h>
 
@@ -23,6 +24,8 @@ static float bgColor[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
 static int sliderVal = 0;
 static float dragVal = 0.0;
 const int listItems[5] = { 10, 20, 30, 40, 50 };
+static float vsColorTint[4] = { 1.0f, 0.5f, 0.5f, 1.0f };
+static float vsOffset[3] = { 0.25f, 0.0f, 0.0f };
 
 // --------------------------------------------------------
 // The constructor is called after the window and graphics API
@@ -34,7 +37,6 @@ Game::Game()
 	// geometry to draw and some simple camera matrices.
 	//  - You'll be expanding and/or replacing these later
 	LoadShaders();
-	//CreateGeometry();
 
 	// Set initial graphics API state
 	//  - These settings persist until we change them
@@ -58,63 +60,85 @@ Game::Game()
 		Graphics::Context->PSSetShader(pixelShader.Get(), 0, 0);
 	}
 
-	// ImGui init
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGui_ImplWin32_Init(Window::Handle());
-	ImGui_ImplDX11_Init(Graphics::Device.Get(), Graphics::Context.Get());
-
-	// Pick a style
-	ImGui::StyleColorsDark();
-	//ImGui::StyleColorsLight();
-	//ImGui::StyleColorsClassic();
-
-	// Create points & colors for meshes
-	XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-	XMFLOAT4 black = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4 gray = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
-
-	// Triangle mesh
-	Vertex triangleVertices[] =
+	// ImGui setup
 	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green }
-	};
-	unsigned int triangleIndices[] = { 0, 1, 2 };
-	//triangleMesh = std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices));
-	meshVec.push_back(std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices), "Triangle"));
+		// ImGui init
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui_ImplWin32_Init(Window::Handle());
+		ImGui_ImplDX11_Init(Graphics::Device.Get(), Graphics::Context.Get());
 
-	// Quad mesh
-	Vertex quadVertices[] =
+		// Pick a style
+		ImGui::StyleColorsDark();
+		//ImGui::StyleColorsLight();
+		//ImGui::StyleColorsClassic();
+	}
+
+	// Hardcoded meshes
 	{
-		{ XMFLOAT3(-0.25f - 0.5f, +0.0f + 0.5f, +0.0f), blue },		// Adding 0.5 to offset it, ugly but it works
-		{ XMFLOAT3(+0.0f - 0.5f, +0.25f + 0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.0f - 0.5f, +0.0f + 0.5f, +0.0f), red },
-		{ XMFLOAT3(-0.25f - 0.5f, +0.25f + 0.5f, +0.0f), blue }
-	};
-	unsigned int quadIndices[] = { 0, 1, 2,   0, 3, 1 };
-	//quadMesh = std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices));
-	meshVec.push_back(std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices), "Quad"));
+		// Create points & colors for meshes
+		XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
+		XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
+		XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
+		XMFLOAT4 black = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
+		XMFLOAT4 gray = XMFLOAT4(0.5f, 0.5f, 0.5f, 1.0f);
 
-	// Weird mesh
-	Vertex weirdVertices[] =
+		// Triangle mesh
+		Vertex triangleVertices[] =
+		{
+			{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
+			{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
+			{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green }
+		};
+		unsigned int triangleIndices[] = { 0, 1, 2 };
+		//triangleMesh = std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices));
+		meshVec.push_back(std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices), "Triangle"));
+
+		// Quad mesh
+		Vertex quadVertices[] =
+		{
+			{ XMFLOAT3(-0.25f - 0.5f, +0.0f + 0.5f, +0.0f), blue },		// Adding 0.5 to offset it, ugly but it works
+			{ XMFLOAT3(+0.0f - 0.5f, +0.25f + 0.5f, +0.0f), red },
+			{ XMFLOAT3(+0.0f - 0.5f, +0.0f + 0.5f, +0.0f), red },
+			{ XMFLOAT3(-0.25f - 0.5f, +0.25f + 0.5f, +0.0f), blue }
+		};
+		unsigned int quadIndices[] = { 0, 1, 2,   0, 3, 1 };
+		//quadMesh = std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices));
+		meshVec.push_back(std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices), "Quad"));
+
+		// Weird mesh
+		Vertex weirdVertices[] =
+		{
+			{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+			{ XMFLOAT3(+0.25f + 0.5f, +0.125f + 0.5f, +0.0f), black },
+			{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+			{ XMFLOAT3(-0.125f + 0.5f, +0.25f + 0.5f, +0.0f), black },
+
+			{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+			{ XMFLOAT3(+0.25f + 0.5f, -0.125f + 0.5f, +0.0f), black },
+			{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+			{ XMFLOAT3(-0.125f + 0.5f, -0.25f + 0.5f, +0.0f), black }
+		};
+		unsigned int weirdIndices[] = { 0, 1, 2,   0, 3, 1,   4, 6, 5,   4, 5, 7 };
+		//weirdMesh = std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices));
+		meshVec.push_back(std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices), "The weird one"));
+	}
+
+	// Constant buffer
 	{
-		{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
-		{ XMFLOAT3(+0.25f + 0.5f, +0.125f + 0.5f, +0.0f), black },
-		{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
-		{ XMFLOAT3(-0.125f + 0.5f, +0.25f + 0.5f, +0.0f), black },
+		// Describe buffer
+		D3D11_BUFFER_DESC cbDesc = {};
+		cbDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+		unsigned int size = sizeof(VertexShaderData);
+		size = (size + 15) / 16 * 16;
+		cbDesc.ByteWidth = size;
+		cbDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		cbDesc.Usage = D3D11_USAGE_DYNAMIC;
 
-		{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
-		{ XMFLOAT3(+0.25f + 0.5f, -0.125f + 0.5f, +0.0f), black },
-		{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
-		{ XMFLOAT3(-0.125f + 0.5f, -0.25f + 0.5f, +0.0f), black }
-	};
-	unsigned int weirdIndices[] = { 0, 1, 2,   0, 3, 1,   4, 6, 5,   4, 5, 7 };
-	//weirdMesh = std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices));
-	meshVec.push_back(std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices), "The weird one"));
+		// Create and bind buffer
+		Graphics::Device->CreateBuffer(&cbDesc, 0, constBuffer.GetAddressOf());
+		Graphics::Context->VSSetConstantBuffers(0, 1, constBuffer.GetAddressOf());
+	}
 }
 
 
@@ -203,102 +227,6 @@ void Game::LoadShaders()
 	}
 }
 
-
-// --------------------------------------------------------
-// Creates the geometry we're going to draw
-// --------------------------------------------------------
-/*
-void Game::CreateGeometry()
-{
-	// Create some temporary variables to represent colors
-	// - Not necessary, just makes things more readable
-	XMFLOAT4 red = XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4 green = XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f);
-	XMFLOAT4 blue = XMFLOAT4(0.0f, 0.0f, 1.0f, 1.0f);
-
-	// Set up the vertices of the triangle we would like to draw
-	// - We're going to copy this array, exactly as it exists in CPU memory
-	//    over to a Direct3D-controlled data structure on the GPU (the vertex buffer)
-	// - Note: Since we don't have a camera or really any concept of
-	//    a "3d world" yet, we're simply describing positions within the
-	//    bounds of how the rasterizer sees our screen: [-1 to +1] on X and Y
-	// - This means (0,0) is at the very center of the screen.
-	// - These are known as "Normalized Device Coordinates" or "Homogeneous 
-	//    Screen Coords", which are ways to describe a position without
-	//    knowing the exact size (in pixels) of the image/window/etc.  
-	// - Long story short: Resizing the window also resizes the triangle,
-	//    since we're describing the triangle in terms of the window itself
-	Vertex vertices[] =
-	{
-		{ XMFLOAT3(+0.0f, +0.5f, +0.0f), red },
-		{ XMFLOAT3(+0.5f, -0.5f, +0.0f), blue },
-		{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green },
-	};
-
-	// Set up indices, which tell us which vertices to use and in which order
-	// - This is redundant for just 3 vertices, but will be more useful later
-	// - Indices are technically not required if the vertices are in the buffer 
-	//    in the correct order and each one will be used exactly once
-	// - But just to see how it's done...
-	unsigned int indices[] = { 0, 1, 2 };
-
-
-	// Create a VERTEX BUFFER
-	// - This holds the vertex data of triangles for a single object
-	// - This buffer is created on the GPU, which is where the data needs to
-	//    be if we want the GPU to act on it (as in: draw it to the screen)
-	{
-		// First, we need to describe the buffer we want Direct3D to make on the GPU
-		//  - Note that this variable is created on the stack since we only need it once
-		//  - After the buffer is created, this description variable is unnecessary
-		D3D11_BUFFER_DESC vbd = {};
-		vbd.Usage = D3D11_USAGE_IMMUTABLE;	// Will NEVER change
-		vbd.ByteWidth = sizeof(Vertex) * 3;       // 3 = number of vertices in the buffer
-		vbd.BindFlags = D3D11_BIND_VERTEX_BUFFER; // Tells Direct3D this is a vertex buffer
-		vbd.CPUAccessFlags = 0;	// Note: We cannot access the data from C++ (this is good)
-		vbd.MiscFlags = 0;
-		vbd.StructureByteStride = 0;
-
-		// Create the proper struct to hold the initial vertex data
-		// - This is how we initially fill the buffer with data
-		// - Essentially, we're specifying a pointer to the data to copy
-		D3D11_SUBRESOURCE_DATA initialVertexData = {};
-		initialVertexData.pSysMem = vertices; // pSysMem = Pointer to System Memory
-
-		// Actually create the buffer on the GPU with the initial data
-		// - Once we do this, we'll NEVER CHANGE DATA IN THE BUFFER AGAIN
-		Graphics::Device->CreateBuffer(&vbd, &initialVertexData, vertexBuffer.GetAddressOf());
-	}
-
-	// Create an INDEX BUFFER
-	// - This holds indices to elements in the vertex buffer
-	// - This is most useful when vertices are shared among neighboring triangles
-	// - This buffer is created on the GPU, which is where the data needs to
-	//    be if we want the GPU to act on it (as in: draw it to the screen)
-	{
-		// Describe the buffer, as we did above, with two major differences
-		//  - Byte Width (3 unsigned integers vs. 3 whole vertices)
-		//  - Bind Flag (used as an index buffer instead of a vertex buffer) 
-		D3D11_BUFFER_DESC ibd = {};
-		ibd.Usage = D3D11_USAGE_IMMUTABLE;	// Will NEVER change
-		ibd.ByteWidth = sizeof(unsigned int) * 3;	// 3 = number of indices in the buffer
-		ibd.BindFlags = D3D11_BIND_INDEX_BUFFER;	// Tells Direct3D this is an index buffer
-		ibd.CPUAccessFlags = 0;	// Note: We cannot access the data from C++ (this is good)
-		ibd.MiscFlags = 0;
-		ibd.StructureByteStride = 0;
-
-		// Specify the initial data for this buffer, similar to above
-		D3D11_SUBRESOURCE_DATA initialIndexData = {};
-		initialIndexData.pSysMem = indices; // pSysMem = Pointer to System Memory
-
-		// Actually create the buffer with the initial data
-		// - Once we do this, we'll NEVER CHANGE THE BUFFER AGAIN
-		Graphics::Device->CreateBuffer(&ibd, &initialIndexData, indexBuffer.GetAddressOf());
-	}
-}
-*/
-
-
 // --------------------------------------------------------
 // Handle resizing to match the new window size
 //  - Eventually, we'll want to update our 3D camera
@@ -336,7 +264,6 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	bgColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
-
 	
 	// DRAW geometry
 	//triangleMesh->Draw(deltaTime, totalTime);
@@ -344,6 +271,18 @@ void Game::Draw(float deltaTime, float totalTime)
 	//weirdMesh->Draw(deltaTime, totalTime);
 	for (unsigned int i = 0; i < meshVec.size(); ++i)
 	{
+		// Create vertex shader data
+		VertexShaderData vsData;
+		vsData.ColorTint = XMFLOAT4(vsColorTint[0], vsColorTint[1], vsColorTint[2], 1.0f);
+		vsData.Offset = XMFLOAT3(vsOffset[0], vsOffset[1], vsOffset[2]);
+
+		// Copy to the resource (map (lock) -> copy -> unmap (unlock))
+		D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
+		Graphics::Context->Map(constBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedBuffer);	// map
+		memcpy(mappedBuffer.pData, &vsData, sizeof(vsData));	// copy
+		Graphics::Context->Unmap(constBuffer.Get(), 0);		// unmap
+
+		// Draw mesh
 		meshVec[i]->Draw(deltaTime, totalTime);
 	}
 
@@ -426,6 +365,15 @@ void Game::ImGuiBuildUI()
 				ImGui::TreePop();
 			}
 		}
+		ImGui::TreePop();
+	}
+
+	// Vertex shader controls (temporary
+	if (ImGui::TreeNode("Vertex shader controls"))
+	{
+		ImGui::ColorEdit4("Color tint", vsColorTint);
+		ImGui::SliderFloat3("Offset", vsOffset, -1.0f, 1.0f);
+
 		ImGui::TreePop();
 	}
 

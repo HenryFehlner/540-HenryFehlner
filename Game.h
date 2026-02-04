@@ -52,5 +52,8 @@ private:
 	//std::shared_ptr<Mesh> triangleMesh;
 	//std::shared_ptr<Mesh> quadMesh;
 	//std::shared_ptr<Mesh> weirdMesh;
+
+	// Constant buffer
+	Microsoft::WRL::ComPtr<ID3D11Buffer> constBuffer;
 };
 

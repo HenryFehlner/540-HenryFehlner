@@ -24,7 +24,7 @@ static float bgColor[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
 static int sliderVal = 0;
 static float dragVal = 0.0;
 const int listItems[5] = { 10, 20, 30, 40, 50 };
-static float vsColorTint[4] = { 1.0f, 0.5f, 0.5f, 1.0f };
+static float vsColorTint[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 static float vsOffset[3] = { 0.25f, 0.0f, 0.0f };
 
 // --------------------------------------------------------
@@ -91,37 +91,56 @@ Game::Game()
 			{ XMFLOAT3(-0.5f, -0.5f, +0.0f), green }
 		};
 		unsigned int triangleIndices[] = { 0, 1, 2 };
-		//triangleMesh = std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices));
-		meshVec.push_back(std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices), "Triangle"));
+		triangleMesh = std::make_shared<Mesh>(triangleVertices, std::size(triangleVertices), triangleIndices, std::size(triangleIndices), "Triangle");
+		meshVec.push_back(triangleMesh);
 
 		// Quad mesh
+		//Vertex quadVertices[] =
+		//{
+		//	{ XMFLOAT3(-0.25f - 0.5f, +0.0f + 0.5f, +0.0f), blue },		// Adding 0.5 to offset it, ugly but it works
+		//	{ XMFLOAT3(+0.0f - 0.5f, +0.25f + 0.5f, +0.0f), red },
+		//	{ XMFLOAT3(+0.0f - 0.5f, +0.0f + 0.5f, +0.0f), red },
+		//	{ XMFLOAT3(-0.25f - 0.5f, +0.25f + 0.5f, +0.0f), blue }
+		//};
 		Vertex quadVertices[] =
 		{
-			{ XMFLOAT3(-0.25f - 0.5f, +0.0f + 0.5f, +0.0f), blue },		// Adding 0.5 to offset it, ugly but it works
-			{ XMFLOAT3(+0.0f - 0.5f, +0.25f + 0.5f, +0.0f), red },
-			{ XMFLOAT3(+0.0f - 0.5f, +0.0f + 0.5f, +0.0f), red },
-			{ XMFLOAT3(-0.25f - 0.5f, +0.25f + 0.5f, +0.0f), blue }
+			{ XMFLOAT3(-0.25f, +0.0f, +0.0f), blue },		// Adding 0.5 to offset it, ugly but it works
+			{ XMFLOAT3(+0.0f, +0.25f, +0.0f), red },
+			{ XMFLOAT3(+0.0f, +0.0f, +0.0f), red },
+			{ XMFLOAT3(-0.25f, +0.25f, +0.0f), blue }
 		};
 		unsigned int quadIndices[] = { 0, 1, 2,   0, 3, 1 };
-		//quadMesh = std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices));
-		meshVec.push_back(std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices), "Quad"));
+		quadMesh = std::make_shared<Mesh>(quadVertices, std::size(quadVertices), quadIndices, std::size(quadIndices), "Quad");
+		meshVec.push_back(quadMesh);
 
 		// Weird mesh
+		//Vertex weirdVertices[] =
+		//{
+		//	{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+		//	{ XMFLOAT3(+0.25f + 0.5f, +0.125f + 0.5f, +0.0f), black },
+		//	{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+		//	{ XMFLOAT3(-0.125f + 0.5f, +0.25f + 0.5f, +0.0f), black },
+		//
+		//	{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+		//	{ XMFLOAT3(+0.25f + 0.5f, -0.125f + 0.5f, +0.0f), black },
+		//	{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
+		//	{ XMFLOAT3(-0.125f + 0.5f, -0.25f + 0.5f, +0.0f), black }
+		//};
 		Vertex weirdVertices[] =
 		{
-			{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
-			{ XMFLOAT3(+0.25f + 0.5f, +0.125f + 0.5f, +0.0f), black },
-			{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
-			{ XMFLOAT3(-0.125f + 0.5f, +0.25f + 0.5f, +0.0f), black },
+			{ XMFLOAT3(-0.25f, +0.0f, +0.0f), gray },
+			{ XMFLOAT3(+0.25f, +0.125f, +0.0f), black },
+			{ XMFLOAT3(+0.0f, +0.0f, +0.0f), gray },
+			{ XMFLOAT3(-0.125f, +0.25f, +0.0f), black },
 
-			{ XMFLOAT3(-0.25f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
-			{ XMFLOAT3(+0.25f + 0.5f, -0.125f + 0.5f, +0.0f), black },
-			{ XMFLOAT3(+0.0f + 0.5f, +0.0f + 0.5f, +0.0f), gray },
-			{ XMFLOAT3(-0.125f + 0.5f, -0.25f + 0.5f, +0.0f), black }
+			{ XMFLOAT3(-0.25f, +0.0f, +0.0f), gray },
+			{ XMFLOAT3(+0.25f, -0.125f, +0.0f), black },
+			{ XMFLOAT3(+0.0f, +0.0f, +0.0f), gray },
+			{ XMFLOAT3(-0.125f, -0.25f, +0.0f), black }
 		};
 		unsigned int weirdIndices[] = { 0, 1, 2,   0, 3, 1,   4, 6, 5,   4, 5, 7 };
-		//weirdMesh = std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices));
-		meshVec.push_back(std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices), "The weird one"));
+		weirdMesh = std::make_shared<Mesh>(weirdVertices, std::size(weirdVertices), weirdIndices, std::size(weirdIndices), "The weird one");
+		meshVec.push_back(weirdMesh);
 	}
 
 	// Constant buffer
@@ -138,6 +157,26 @@ Game::Game()
 		// Create and bind buffer
 		Graphics::Device->CreateBuffer(&cbDesc, 0, constBuffer.GetAddressOf());
 		Graphics::Context->VSSetConstantBuffers(0, 1, constBuffer.GetAddressOf());
+	}
+
+	// Hardcoded entities
+	{
+		testEntity1 = std::make_shared<Entity>(triangleMesh);
+		testEntity1->GetTransform().Scale(0.5f);
+		entityVec.push_back(testEntity1);
+
+		testEntity2 = std::make_shared<Entity>(triangleMesh);
+		testEntity2->GetTransform().Scale(0.75f);
+		entityVec.push_back(testEntity2);
+
+		testEntity3 = std::make_shared<Entity>(quadMesh);
+		entityVec.push_back(testEntity3);
+
+		testEntity4 = std::make_shared<Entity>(quadMesh);
+		entityVec.push_back(testEntity4);
+
+		testEntity5 = std::make_shared<Entity>(weirdMesh);
+		entityVec.push_back(testEntity5);
 	}
 }
 
@@ -242,13 +281,20 @@ void Game::OnResize()
 // --------------------------------------------------------
 void Game::Update(float deltaTime, float totalTime)
 {
+	// Example input checking: Quit if the escape key is pressed
+	if (Input::KeyDown(VK_ESCAPE))
+		Window::Quit();
+
 	// Update ImGui
 	ImGuiNewFrameUpdate(deltaTime);
 	ImGuiBuildUI();
 
-	// Example input checking: Quit if the escape key is pressed
-	if (Input::KeyDown(VK_ESCAPE))
-		Window::Quit();
+	// Move entities
+	//entityVec[0]->GetTransform().SetPosition((float)sin(totalTime), (float)cos(totalTime), 0.0f);
+	entityVec[1]->GetTransform().SetPosition((float)cos(totalTime), (float)sin(totalTime), 0.0f);
+	entityVec[2]->GetTransform().SetRotation(0.0f, 0.0f, totalTime * 2.0f);
+	entityVec[3]->GetTransform().SetScale((float)sin(totalTime) + 1.5f, (float)sin(totalTime) + 1.5f, 1.0f);
+	entityVec[4]->GetTransform().SetPosition(-(float)sin(totalTime), 0.5f, 0.0f);
 }
 
 // --------------------------------------------------------
@@ -266,15 +312,45 @@ void Game::Draw(float deltaTime, float totalTime)
 	}
 	
 	// DRAW geometry
-	//triangleMesh->Draw(deltaTime, totalTime);
-	//quadMesh->Draw(deltaTime, totalTime);
-	//weirdMesh->Draw(deltaTime, totalTime);
-	for (unsigned int i = 0; i < meshVec.size(); ++i)
+	//for (unsigned int i = 0; i < meshVec.size(); ++i)
+	for (unsigned int i = 0; i < entityVec.size(); ++i)
 	{
 		// Create vertex shader data
 		VertexShaderData vsData;
 		vsData.ColorTint = XMFLOAT4(vsColorTint[0], vsColorTint[1], vsColorTint[2], 1.0f);
-		vsData.Offset = XMFLOAT3(vsOffset[0], vsOffset[1], vsOffset[2]);
+		vsData.Matrix = entityVec[i]->GetTransform().GetWorldMatrix();
+
+		//// Translation
+		//XMMATRIX trMat = XMMatrixTranslation((float)sin(totalTime), 0, 0);
+		//
+		//// Scale
+		//float scale = (float)sin(totalTime * 3.7f) * 0.5f + 1.0f;
+		//XMMATRIX scMat = XMMatrixScaling(scale, scale, scale);
+		//
+		//// Rotation
+		//XMMATRIX rotMat = XMMatrixRotationRollPitchYaw(0, 0, totalTime * 0.1f);
+		//
+		//// Build world matrix
+		//XMMATRIX worldMat = scMat * rotMat * trMat;	// order matters here
+		//
+		//// Store result
+		//XMStoreFloat4x4(&vsData.Matrix, worldMat);
+
+		//// DXMath demo
+		//// Create storage types
+		//XMFLOAT3 position(1, 2, 3);
+		//XMFLOAT3 offset(4, 5, 6);
+		//
+		//// Load into math types
+		//XMVECTOR posVec = XMLoadFloat3(&position);
+		//XMVECTOR offVec = XMLoadFloat3(&offset);
+		//
+		//// Do some math
+		//posVec = XMVectorAdd(posVec, offVec);
+		//posVec *= 5;
+		//
+		//// Store back in storage type
+		//XMStoreFloat3(&position, posVec);
 
 		// Copy to the resource (map (lock) -> copy -> unmap (unlock))
 		D3D11_MAPPED_SUBRESOURCE mappedBuffer = {};
@@ -283,7 +359,10 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->Unmap(constBuffer.Get(), 0);		// unmap
 
 		// Draw mesh
-		meshVec[i]->Draw(deltaTime, totalTime);
+		//meshVec[i]->Draw(deltaTime, totalTime);
+
+		// Draw entity
+		entityVec[i]->Draw(deltaTime, totalTime);
 	}
 
 	// Draw ImGui
@@ -352,6 +431,14 @@ void Game::ImGuiBuildUI()
 		ImGui::TreePop();
 	}
 
+	// Vertex shader controls (temporary
+	if (ImGui::TreeNode("Vertex shader controls"))
+	{
+		ImGui::ColorEdit4("Color tint", vsColorTint);
+
+		ImGui::TreePop();
+	}
+
 	// Mesh info tree
 	if (ImGui::TreeNode("Meshes"))
 	{
@@ -368,11 +455,37 @@ void Game::ImGuiBuildUI()
 		ImGui::TreePop();
 	}
 
-	// Vertex shader controls (temporary
-	if (ImGui::TreeNode("Vertex shader controls"))
+	// Entity controls
+	if (ImGui::TreeNode("Scene Entities"))
 	{
-		ImGui::ColorEdit4("Color tint", vsColorTint);
-		ImGui::SliderFloat3("Offset", vsOffset, -1.0f, 1.0f);
+		for (unsigned int i = 0; i < entityVec.size(); ++i)
+		{
+			if (ImGui::TreeNode(std::string("Entity " + std::to_string(i)).c_str()))
+			{
+				// Name
+				ImGui::Text(entityVec[i]->GetMesh()->GetName().c_str());
+
+				// Position
+				XMFLOAT3 position = entityVec[i]->GetTransform().GetPosition();
+				float posArray[3] = { position.x, position.y, position.z };
+				ImGui::DragFloat3(std::string("Position##" + std::to_string(i)).c_str(), posArray, 0.01f, -1.0f, 1.0f);
+				entityVec[i]->GetTransform().SetPosition(posArray[0], posArray[1], posArray[2]);
+
+				// Rotation
+				XMFLOAT3 rotation = entityVec[i]->GetTransform().GetPitchYawRoll();
+				float rotArray[3] = { rotation.x, rotation.y, rotation.z };
+				ImGui::DragFloat3(std::string("Rotation##" + std::to_string(i)).c_str(), rotArray, 0.01f, -4.0f, 4.0f);
+				entityVec[i]->GetTransform().SetRotation(rotArray[0], rotArray[1], rotArray[2]);
+
+				// Scale
+				XMFLOAT3 scale = entityVec[i]->GetTransform().GetScale();
+				float scArray[3] = { scale.x, scale.y, scale.z };
+				ImGui::DragFloat3(std::string("Scale##" + std::to_string(i)).c_str(), scArray, 0.01f, 0.0f, 10.0f);
+				entityVec[i]->GetTransform().SetScale(scArray[0], scArray[1], scArray[2]);
+
+				ImGui::TreePop();
+			}
+		}
 
 		ImGui::TreePop();
 	}

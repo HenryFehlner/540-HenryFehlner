@@ -4,6 +4,7 @@
 #include <wrl/client.h>
 #include <memory>
 #include <vector>
+#include "Entity.h"
 #include "Mesh.h"
 
 class Game
@@ -44,16 +45,25 @@ private:
 	void ImGuiNewFrameUpdate(float deltaTime);
 	void ImGuiBuildUI();
 
+	// Constant buffer
+	Microsoft::WRL::ComPtr<ID3D11Buffer> constBuffer;
+
 	// Mesh container
 	std::vector<std::shared_ptr<Mesh>> meshVec;
 
-	// Test meshes (commented out to use them with the vector, I'm leaving 
-	// them here because I don't know how we will expand later)
-	//std::shared_ptr<Mesh> triangleMesh;
-	//std::shared_ptr<Mesh> quadMesh;
-	//std::shared_ptr<Mesh> weirdMesh;
+	// Entity container
+	std::vector<std::shared_ptr<Entity>> entityVec;
 
-	// Constant buffer
-	Microsoft::WRL::ComPtr<ID3D11Buffer> constBuffer;
+	// Test meshes
+	std::shared_ptr<Mesh> triangleMesh;
+	std::shared_ptr<Mesh> quadMesh;
+	std::shared_ptr<Mesh> weirdMesh;
+
+	// Test entities
+	std::shared_ptr<Entity> testEntity1;
+	std::shared_ptr<Entity> testEntity2;
+	std::shared_ptr<Entity> testEntity3;
+	std::shared_ptr<Entity> testEntity4;
+	std::shared_ptr<Entity> testEntity5;
 };
 

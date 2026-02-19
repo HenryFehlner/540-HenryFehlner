@@ -178,6 +178,28 @@ Game::Game()
 		testEntity5 = std::make_shared<Entity>(weirdMesh);
 		entityVec.push_back(testEntity5);
 	}
+
+	// Camera setup
+	{
+		camera1 = std::make_shared<Camera>
+			(0.0f, 0.0f, -1.0f,
+				Window::AspectRatio(), 1.5708f,
+				0.01f, 500.0f,
+				1.0f, 0.01f,
+				true);
+		cameraVec.push_back(camera1);
+
+		camera2 = std::make_shared<Camera>
+			(-0.2f, 0.5f, -2.0f,
+				Window::AspectRatio(), 0.4f,
+				0.01f, 500.0f,
+				1.0f, 0.01f,
+				true);
+		cameraVec.push_back(camera2);
+
+		// Set active camera
+		activeCameraIndex = 0;
+	}
 }
 
 
@@ -272,7 +294,10 @@ void Game::LoadShaders()
 // --------------------------------------------------------
 void Game::OnResize()
 {
-	
+	for (unsigned int i = 0; i < cameraVec.size(); ++i)
+	{
+		cameraVec[i]->UpdateProjectionMatrix(Window::AspectRatio());
+	}
 }
 
 
@@ -289,6 +314,9 @@ void Game::Update(float deltaTime, float totalTime)
 	ImGuiNewFrameUpdate(deltaTime);
 	ImGuiBuildUI();
 
+	// Update Camera
+	cameraVec[activeCameraIndex]->Update(deltaTime);
+
 	// Move entities
 	//entityVec[0]->GetTransform().SetPosition((float)sin(totalTime), (float)cos(totalTime), 0.0f);
 	entityVec[1]->GetTransform().SetPosition((float)cos(totalTime), (float)sin(totalTime), 0.0f);
@@ -302,7 +330,7 @@ void Game::Update(float deltaTime, float totalTime)
 // --------------------------------------------------------
 void Game::Draw(float deltaTime, float totalTime)
 {
-	// Frame START
+	// Frame start
 	// - These things should happen ONCE PER FRAME
 	// - At the beginning of Game::Draw() before drawing *anything*
 	{
@@ -311,14 +339,16 @@ void Game::Draw(float deltaTime, float totalTime)
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
 	
-	// DRAW geometry
+	// Draw geometry
 	//for (unsigned int i = 0; i < meshVec.size(); ++i)
 	for (unsigned int i = 0; i < entityVec.size(); ++i)
 	{
 		// Create vertex shader data
 		VertexShaderData vsData;
 		vsData.ColorTint = XMFLOAT4(vsColorTint[0], vsColorTint[1], vsColorTint[2], 1.0f);
-		vsData.Matrix = entityVec[i]->GetTransform().GetWorldMatrix();
+		vsData.WorldMatrix = entityVec[i]->GetTransform().GetWorldMatrix();
+		vsData.ViewMatrix = cameraVec[activeCameraIndex]->GetViewMatrix();
+		vsData.ProjectionMatrix = cameraVec[activeCameraIndex]->GetProjectionMatrix();
 
 		//// Translation
 		//XMMATRIX trMat = XMMatrixTranslation((float)sin(totalTime), 0, 0);
@@ -369,7 +399,7 @@ void Game::Draw(float deltaTime, float totalTime)
 	ImGui::Render();	// Turns the frame's UI into tris to be rendered
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());	// Draw to the screen
 
-	// Frame END
+	// Frame end
 	// - These should happen exactly ONCE PER FRAME
 	// - At the very end of the frame (after drawing *everything*)
 	{
@@ -486,6 +516,35 @@ void Game::ImGuiBuildUI()
 				ImGui::TreePop();
 			}
 		}
+
+		ImGui::TreePop();
+	}
+
+	// Camera info (not meant to be edited in the GUI)
+	if (ImGui::TreeNode("Camera Controls"))
+	{
+		// Get amount of cameras
+		size_t cameraCount = cameraVec.size();
+
+		// Create cycle button
+		if (ImGui::Button("Next Camera"))
+		{
+			if (activeCameraIndex >= cameraCount - 1) { activeCameraIndex = 0; }
+			else { activeCameraIndex++; }
+		}
+
+		// Camera index label
+		ImGui::SameLine();
+		ImGui::Text(std::string("Active Camera: " + std::to_string(activeCameraIndex)).c_str());
+
+		// Position
+		XMFLOAT3 cameraPos = cameraVec[activeCameraIndex]->GetPosition();
+		float positionData[3] = { cameraPos.x, cameraPos.y, cameraPos.z };
+		ImGui::DragFloat3("Position", positionData, 0.0f);
+
+		// FOV
+		float cameraFov = cameraVec[activeCameraIndex]->GetFov();
+		ImGui::DragFloat("FOV Angle", &cameraFov, 0.0f);
 
 		ImGui::TreePop();
 	}

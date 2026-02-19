@@ -6,6 +6,7 @@
 #include <vector>
 #include "Entity.h"
 #include "Mesh.h"
+#include "Camera.h"
 
 class Game
 {
@@ -53,6 +54,12 @@ private:
 
 	// Entity container
 	std::vector<std::shared_ptr<Entity>> entityVec;
+
+	// Camera container
+	std::vector<std::shared_ptr<Camera>> cameraVec;
+	unsigned int activeCameraIndex;
+	std::shared_ptr<Camera> camera1;
+	std::shared_ptr<Camera> camera2;
 
 	// Test meshes
 	std::shared_ptr<Mesh> triangleMesh;

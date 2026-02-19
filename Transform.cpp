@@ -13,6 +13,17 @@ Transform::Transform() :
 	XMStoreFloat4x4(&worldInverseTransposeMatrix, DirectX::XMMatrixIdentity());
 }
 
+Transform::Transform(float initialX, float initialY, float initialZ) :
+	position(initialX, initialY, initialZ),
+	rotation(0, 0, 0),
+	scale(1, 1, 1),
+	matrixDirty(false)
+{
+	// Initialize values
+	XMStoreFloat4x4(&worldMatrix, DirectX::XMMatrixIdentity());
+	XMStoreFloat4x4(&worldInverseTransposeMatrix, DirectX::XMMatrixIdentity());
+}
+
 Transform::~Transform()
 {
 
@@ -107,6 +118,57 @@ DirectX::XMFLOAT4X4 Transform::GetWorldInverseTransposeMatrix()
 {
 	return worldInverseTransposeMatrix;
 }
+DirectX::XMFLOAT3 Transform::GetRight()
+{
+	// Load data into math types
+	XMFLOAT3 rightward(1.0f, 0.0f, 0.0f);
+	XMVECTOR rightVec = XMLoadFloat3(&rightward);
+
+	// Create and load quaternion from transform's current rotation
+	XMVECTOR currentRotation = XMQuaternionRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
+
+	// Rotate by this rotation
+	rightVec = XMVector3Rotate(rightVec, currentRotation);
+
+	// Back to storage type
+	XMStoreFloat3(&rightward, rightVec);
+
+	return rightward;
+}
+DirectX::XMFLOAT3 Transform::GetUp()
+{
+	// Load data into math types
+	XMFLOAT3 upward(0.0f, 1.0f, 0.0f);
+	XMVECTOR upVec = XMLoadFloat3(&upward);
+
+	// Create and load quaternion from transform's current rotation
+	XMVECTOR currentRotation = XMQuaternionRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
+
+	// Rotate by this rotation
+	upVec = XMVector3Rotate(upVec, currentRotation);
+
+	// Back to storage type
+	XMStoreFloat3(&upward, upVec);
+
+	return upward;
+}
+DirectX::XMFLOAT3 Transform::GetForward()
+{
+	// Load data into math types
+	XMFLOAT3 forward(0.0f, 0.0f, 1.0f);
+	XMVECTOR forwardVec = XMLoadFloat3(&forward);
+
+	// Create and load quaternion from transform's current rotation
+	XMVECTOR currentRotation = XMQuaternionRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
+
+	// Rotate by this rotation
+	forwardVec = XMVector3Rotate(forwardVec, currentRotation);
+
+	// Back to storage type
+	XMStoreFloat3(&forward, forwardVec);
+
+	return forward;
+}
 
 // Transformers (more than meets the eye)
 void Transform::MoveAbsolute(float x, float y, float z)
@@ -123,6 +185,29 @@ void Transform::MoveAbsolute(DirectX::XMFLOAT3 pOffset)
 
 	// Add to position
 	posVec += offsetVec;
+
+	// Back to storage type
+	XMStoreFloat3(&position, posVec);
+
+	matrixDirty = true;
+}
+void Transform::MoveRelative(float x, float y, float z)
+{
+	// Call the other version
+	XMFLOAT3 offset(x, y, z);
+	MoveRelative(offset);
+}
+void Transform::MoveRelative(DirectX::XMFLOAT3 pOffset)
+{
+	// Load data into math types
+	XMVECTOR posVec = XMLoadFloat3(&position);
+	XMVECTOR offsetVec = XMLoadFloat3(&pOffset);
+
+	// Create and load quaternion from transform's current rotation
+	XMVECTOR currentRotation = XMQuaternionRotationRollPitchYaw(rotation.x, rotation.y, rotation.z);
+
+	// Do tha math
+	posVec += XMVector3Rotate(offsetVec, currentRotation);
 
 	// Back to storage type
 	XMStoreFloat3(&position, posVec);

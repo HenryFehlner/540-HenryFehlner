@@ -1,5 +1,6 @@
 #pragma once
 #include <DirectXMath.h>
+#include <memory>
 #include "Transform.h"
 
 class Camera
@@ -26,7 +27,7 @@ public:
 private:
 	DirectX::XMFLOAT4X4 viewMatrix;
 	DirectX::XMFLOAT4X4 projMatrix;
-	Transform transform;
+	std::shared_ptr<Transform> transform;
 	float fovAngle;	// radians
 	float nearClipDist;
 	float farClipDist;

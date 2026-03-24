@@ -10,7 +10,8 @@ cbuffer ExternalData : register(b0)
 };
 
 // Texture resources
-Texture2D SurfaceTexture  : register(t0);
+Texture2D SurfaceTexture : register(t0);
+Texture2D OverlayTexture : register(t1);
 SamplerState BasicSampler : register(s0);
 
 // --------------------------------------------------------
@@ -23,19 +24,29 @@ SamplerState BasicSampler : register(s0);
 // - Named "main" because that's the default the shader compiler looks for
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
-{
+{	
 	// Apply UV offset and scale
     float2 transformedUV = (input.uv * uvScale) + uvOffset;
 	
-	// Sample color from texture
+	// Sample color from texture and overlay texture
     float4 surfaceColor = SurfaceTexture.Sample(BasicSampler, transformedUV);
+    float4 overlayColor = OverlayTexture.Sample(BasicSampler, transformedUV);
+	
+	// Combine colors from both textures
+    float4 combinedColor = surfaceColor;
+	if (overlayColor.x && overlayColor.y && overlayColor.z)
+    {
+        // Multiply blend mode
+        combinedColor = surfaceColor * overlayColor;
+
+    }
 	
 	// Apply color tint
-    surfaceColor *= colorTint;
+    combinedColor *= colorTint;
 	
 	// Just return the input color
 	// - This color (like most values passing through the rasterizer) is 
 	//   interpolated for each pixel between the corresponding vertices 
 	//   of the triangle we're rendering
-    return surfaceColor;
+    return combinedColor;
 }

@@ -320,3 +320,63 @@ void Graphics::PrintDebugMessages()
 	// Clear any messages we've printed
 	InfoQueue->ClearStoredMessages();
 }
+
+//void Graphics::FillAndBindNextConstantBuffer(
+//	void* data,
+//	unsigned int dataSizeInBytes,
+//	D3D11_SHADER_TYPE shaderType,
+//	unsigned int registerSlot)
+//{
+//	// Reserve space adhering to the 256 byte chunk requirement
+//	unsigned int reservationSize = (dataSizeInBytes + 255) / 256 * 256;
+//
+//	// Loop to beginning of buffer in necessary
+//	if (cbHeapOffsetInBytes + reservationSize >= cbHeapSizeInBytes)
+//	{
+//		cbHeapOffsetInBytes = 0;
+//	}
+//
+//	// Map the buffer
+//	D3D11_MAPPED_SUBRESOURCE map{};
+//	Graphics::Context->Map(
+//		ConstantBufferHeap.Get(),
+//		0,
+//		D3D11_MAP_WRITE_NO_OVERWRITE,
+//		0,
+//		&map);
+//
+//	// Memcpy to write into the buffer
+//	void* uploadAddress = reinterpret_cast<void*>((UINT64)map.pData + cbHeapOffsetInBytes);
+//	memcpy(uploadAddress, data, dataSizeInBytes);
+//
+//	// Unmap
+//	Graphics::Context->Unmap(ConstantBufferHeap.Get(), 0);
+//
+//	// Calculate binding offsets as 16 byte constants
+//	unsigned int firstConstant = cbHeapOffsetInBytes / 16;
+//	unsigned int numConstants = reservationSize / 16;
+//
+//	// Bind to proper pipeline stage
+//	switch (shaderType)
+//	{
+//	case D3D11_VERTEX_SHADER:
+//		Context1->VSSetConstantBuffers1(
+//			registerSlot,
+//			1,
+//			ConstantBufferHeap.GetAddressOf(),
+//			&firstConstant,
+//			&numConstants);
+//		break;
+//	case D3D11_PIXEL_SHADER:
+//		Context1->PSSetConstantBuffers1(
+//			registerSlot,
+//			1,
+//			ConstantBufferHeap.GetAddressOf(),
+//			&firstConstant,
+//			&numConstants);
+//		break;
+//	}
+//
+//	// Offset for the next call
+//	cbHeapOffsetInBytes += reservationSize;
+//}

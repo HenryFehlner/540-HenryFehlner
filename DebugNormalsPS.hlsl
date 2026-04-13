@@ -1,4 +1,4 @@
-#include "ShaderStructs.hlsli"
+#include "ShaderIncludes.hlsli"
 
 // Constant buffer
 cbuffer ExternalData : register(b0)

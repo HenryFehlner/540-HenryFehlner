@@ -10,14 +10,14 @@ Entity::~Entity()
 {
 }
 
-void Entity::Draw(float deltaTime, float totalTime)
+void Entity::Draw(float deltaTime)
 {
 	// Activate the shaders
 	Graphics::Context->VSSetShader(materialPtr->GetVertexShader().Get(), 0, 0);
 	Graphics::Context->PSSetShader(materialPtr->GetPixelShader().Get(), 0, 0);
 
 	// Draw the mesh
-	meshPtr->Draw(deltaTime, totalTime);
+	meshPtr->Draw(deltaTime);
 }
 
 // Setters

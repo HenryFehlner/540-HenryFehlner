@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <d3d11_1.h>
+#include <d3d11shadertracing.h>
 #include <string>
 #include <wrl/client.h>
 
@@ -37,4 +38,17 @@ namespace Graphics
 
 	// Debug Layer
 	void PrintDebugMessages();
+
+	// My functions
+	// Constant ring buffer
+	//Microsoft::WRL::ComPtr<ID3D11DeviceContext1> Context1;	// D3D11.1 context
+	//Microsoft::WRL::ComPtr<ID3D11Buffer> ConstantBufferHeap;	// Ring buffer
+	//unsigned int cbHeapSizeInBytes;
+	//unsigned int cbHeapOffsetInBytes;
+	//void FillAndBindNextConstantBuffer(
+	//	void* data,
+	//	unsigned int dataSizeInBytes,
+	//	D3D11_SHADER_TYPE shaderType,
+	//	unsigned int registerSlot
+	//);
 }

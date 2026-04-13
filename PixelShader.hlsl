@@ -1,4 +1,4 @@
-#include "ShaderStructs.hlsli"
+#include "ShaderIncludes.hlsli"
 
 // Constant buffer
 cbuffer ExternalData : register(b0)
@@ -6,11 +6,15 @@ cbuffer ExternalData : register(b0)
     float2 uvScale;
     float2 uvOffset;
     float4 colorTint;
+    float3 cameraPosition;
     float totalTime;
+    float3 ambientColor;
+    Light lights[5];
 };
 
 // Texture resources
 Texture2D SurfaceTexture  : register(t0);
+Texture2D NormalMap       : register(t1);
 SamplerState BasicSampler : register(s0);
 
 // --------------------------------------------------------
@@ -24,18 +28,56 @@ SamplerState BasicSampler : register(s0);
 // --------------------------------------------------------
 float4 main(VertexToPixel input) : SV_TARGET
 {
-	// Apply UV offset and scale
+    // Normalize normal, rasterizer interpolation results in non-unit vectors
+    input.normal = normalize(input.normal);
+    
+    // Apply UV offset and scale
     float2 transformedUV = (input.uv * uvScale) + uvOffset;
+    
+    // Normal mapping
+    {
+        // Unpack normal from texture
+        float3 sampledNormal = NormalMap.Sample(BasicSampler, transformedUV).xyz;
+        float3 unpackedNormal = normalize(sampledNormal * 2.0 - 1.0);
+        
+        // Create TBN matrix
+        float3 N = input.normal;
+        float3 T = normalize(input.tangent - dot(input.tangent, N) * N); // Orthonormalize here
+        float3 B = cross(T, N);
+        float3x3 TBN = float3x3(T, B, N);
+        
+        // Transform normal from map
+        input.normal = mul(unpackedNormal, TBN);
+    }
 	
-	// Sample color from texture
+    // Get surface color from texture
     float4 surfaceColor = SurfaceTexture.Sample(BasicSampler, transformedUV);
+    
+    // Lighting operations
+    float3 sumOfLights = float3(0, 0, 0);
+    for (int i = 0; i < 5; ++i)
+    {
+        // Get current light
+        Light currentLight = lights[i];
+        
+        // Calculate contribution based on light type
+        switch (currentLight.type)
+        {
+            case LIGHT_TYPE_DIRECTIONAL:
+                sumOfLights += CalcDirectionalLight(currentLight, input, surfaceColor, cameraPosition);
+                break;
+            case LIGHT_TYPE_POINT:
+                sumOfLights += CalcPointLight(currentLight, input, surfaceColor, cameraPosition);
+                break;
+            case LIGHT_TYPE_SPOT:
+                sumOfLights += CalcSpotLight(currentLight, input, surfaceColor, cameraPosition);
+                break;
+        }
+    }
 	
-	// Apply color tint
-    surfaceColor *= colorTint;
+	// Combine ambient, diffuse, and specular terms and apply color tint
+    float4 finalColor = surfaceColor * float4(sumOfLights + ambientColor, 1.0) * colorTint;
 	
-	// Just return the input color
-	// - This color (like most values passing through the rasterizer) is 
-	//   interpolated for each pixel between the corresponding vertices 
-	//   of the triangle we're rendering
-    return surfaceColor;
+	// Return final color
+    return finalColor;
 }

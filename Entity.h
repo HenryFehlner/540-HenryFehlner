@@ -11,7 +11,7 @@ public:
 	Entity(std::shared_ptr<Mesh> pMesh, std::shared_ptr<Material> pMaterial);
 	~Entity();
 
-	void Draw(float deltaTime, float totalTime);
+	void Draw(float deltaTime);
 
 	// Setters
 	void SetMaterial(std::shared_ptr<Material> pMaterial);

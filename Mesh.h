@@ -24,10 +24,11 @@ public:
 	size_t GetIndexCount();
 	std::string GetName();
 
-	void Draw(float deltaTime, float totalTime);
+	void Draw(float deltaTime);
 private:
 	// Buffer creation methods
 	void CreateBuffers(Vertex pVertices[], size_t pVertexCount, UINT pIndices[], size_t pIndexCount);
+	void CalculateTangents(Vertex* verts, int numVerts, unsigned int* indices, int numIndices);
 
 	// Buffers for geometry data
 	Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;

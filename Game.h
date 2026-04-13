@@ -9,6 +9,8 @@
 #include "Mesh.h"
 #include "Camera.h"
 #include "Material.h"
+#include "Lights.h"
+#include "Skybox.h"
 
 class Game
 {
@@ -25,6 +27,9 @@ public:
 	void OnResize();
 
 private:
+	// Global lighting data
+	DirectX::XMFLOAT3 ambientColor;
+	Light lights[5];
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
 	//void LoadShaders();
@@ -32,24 +37,18 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> LoadPixelShader(std::wstring shaderPath);
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> LoadInputLayout(ID3DBlob* vertexShaderBlob);
 
-	// Note the usage of ComPtr below
-	//  - This is a smart pointer for objects that abide by the
-	//     Component Object Model, which DirectX objects do
-	//  - More info here: https://github.com/Microsoft/DirectXTK/wiki/ComPtr
-
-	//// Buffers to hold actual geometry data
-	//Microsoft::WRL::ComPtr<ID3D11Buffer> vertexBuffer;
-	//Microsoft::WRL::ComPtr<ID3D11Buffer> indexBuffer;
-
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
-	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> skyVertexShader;
 
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> tintPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> debugUVsPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> debugNormalsPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> customPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> combinedPixelShader;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> skyPixelShader;
+
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
 
 	// ImGui update helper
 	void ImGuiNewFrameUpdate(float deltaTime);
@@ -87,9 +86,12 @@ private:
 
 	// Textures
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pavingStonesSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pavingStonesNormalsSrv;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> graffitiSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> flatNormalsSrv;
 
 	// Materials
+	std::shared_ptr<Material> basicPsMaterial;
 	std::shared_ptr<Material> tintPsMaterial;
 	std::shared_ptr<Material> uvPsMaterial;
 	std::shared_ptr<Material> normalsPsMaterial;
@@ -111,5 +113,7 @@ private:
 	std::shared_ptr<Entity> testEntity3;
 	std::shared_ptr<Entity> testEntity4;
 	std::shared_ptr<Entity> testEntity5;
+	
+	// Skybox
+	std::shared_ptr<Skybox> skybox;
 };
-

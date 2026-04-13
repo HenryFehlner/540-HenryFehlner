@@ -95,6 +95,7 @@ Game::Game()
 	{
 		// Vertex shaders
 		vertexShader = LoadVertexShader(L"VertexShader.cso");
+		skyVertexShader = LoadVertexShader(L"SkyVertexShader.cso");
 
 		// Pixel shaders
 		tintPixelShader = LoadPixelShader(L"PixelShader.cso");
@@ -102,12 +103,10 @@ Game::Game()
 		debugNormalsPixelShader = LoadPixelShader(L"DebugNormalsPS.cso");
 		customPixelShader = LoadPixelShader(L"CustomPS.cso");
 		combinedPixelShader = LoadPixelShader(L"CombinedPS.cso");
+		skyPixelShader = LoadPixelShader(L"SkyPixelShader.cso");
 	}
 
 	// Set initial graphics API state
-	//  - These settings persist until we change them
-	//  - Some of these, like the primitive topology & input layout, probably won't change
-	//  - Others, like setting shaders, will need to be moved elsewhere later
 	{
 		// Tell the input assembler (IA) stage of the pipeline what kind of
 		// geometric primitives (points, lines or triangles) we want to draw.  
@@ -126,17 +125,75 @@ Game::Game()
 		Graphics::Context->PSSetShader(tintPixelShader.Get(), 0, 0);
 	}
 
+	// Set up lighting
+	{
+		// Set up ambient color
+		ambientColor = XMFLOAT3(0.1f, 0.1f, 0.2f);
+
+		// Lights
+		// Red directional in +X direction
+		lights[0] = {};
+		lights[0].Type = LIGHT_TYPE_DIRECTIONAL;
+		lights[0].Direction = XMFLOAT3(1.0f, 0.0f, 0.0f);
+		lights[0].Color = XMFLOAT3(1.0f, 0.0f, 0.0f);
+		lights[0].Intensity = 1.0f;
+
+		// Green directional in -Y direction
+		lights[1] = {};
+		lights[1].Type = LIGHT_TYPE_DIRECTIONAL;
+		lights[1].Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+		lights[1].Color = XMFLOAT3(0.0f, 1.0f, 0.0f);
+		lights[1].Intensity = 1.0f;
+
+		// Blue directional in -X, +Y direction
+		lights[2] = {};
+		lights[2].Type = LIGHT_TYPE_DIRECTIONAL;
+		lights[2].Direction = XMFLOAT3(-1.0f, 1.0f, 0.0f);
+		lights[2].Color = XMFLOAT3(0.0f, 0.0f, 1.0f);
+		lights[2].Intensity = 1.0f;
+
+		// White point positioned inside the helix
+		lights[3] = {};
+		lights[3].Type = LIGHT_TYPE_POINT;
+		lights[3].Position = XMFLOAT3(5.0f, 0.0f, 0.0f);
+		lights[3].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+		lights[3].Intensity = 2.0f;
+		lights[3].Range = 8.0f;
+
+		// Magenta spot positioned above the one-sided quad
+		lights[4] = {};
+		lights[4].Type = LIGHT_TYPE_SPOT;
+		lights[4].Position = XMFLOAT3(12.5f, 2.0f, 0.0f);
+		lights[4].Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+		lights[4].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+		lights[4].SpotInnerAngle = 0.2f;
+		lights[4].SpotOuterAngle = 0.4f;
+		lights[4].Intensity = 1.0f;
+		lights[4].Range = 12.0f;
+	}
+
 	// Load textures
 	{
 		// Shader Resource Views
 		// Loads image file and creates texture and srv
+		// Paving stones texture
 		DirectX::CreateWICTextureFromFile(
 			Graphics::Device.Get(),
 			Graphics::Context.Get(),
 			FixPath(L"../../Assets/Textures/PavingStones2K/PavingStones138_2K-PNG_Color.png").c_str(),
+			//FixPath(L"../../Assets/Textures/Skies/ColdSunset/front.png").c_str(),
 			0,
 			pavingStonesSrv.GetAddressOf());
 		Graphics::Context->PSSetShaderResources(0, 1, pavingStonesSrv.GetAddressOf());
+
+		// Paving stones normal map
+		DirectX::CreateWICTextureFromFile(
+			Graphics::Device.Get(),
+			Graphics::Context.Get(),
+			FixPath(L"../../Assets/Textures/PavingStones2K/PavingStones138_2K-PNG_NormalDX.png").c_str(),
+			0,
+			pavingStonesNormalsSrv.GetAddressOf());
+		Graphics::Context->PSSetShaderResources(1, 1, pavingStonesNormalsSrv.GetAddressOf());
 
 		// Graffiti texture
 		DirectX::CreateWICTextureFromFile(
@@ -145,7 +202,16 @@ Game::Game()
 			FixPath(L"../../Assets/Textures/qqGraffiti.png").c_str(),
 			0,
 			graffitiSrv.GetAddressOf());
-		Graphics::Context->PSSetShaderResources(1, 1, graffitiSrv.GetAddressOf());
+		Graphics::Context->PSSetShaderResources(2, 1, graffitiSrv.GetAddressOf());
+
+		// Flat normals texture
+		DirectX::CreateWICTextureFromFile(
+			Graphics::Device.Get(),
+			Graphics::Context.Get(),
+			FixPath(L"../../Assets/Textures/flat_normals.png").c_str(),
+			0,
+			flatNormalsSrv.GetAddressOf());
+		Graphics::Context->PSSetShaderResources(3, 1, flatNormalsSrv.GetAddressOf());
 
 		// Texture Sampler State
 		// Describe texture sampler
@@ -164,6 +230,18 @@ Game::Game()
 	
 	// Create materials
 	{
+		basicPsMaterial = std::make_shared<Material>(
+			XMFLOAT2(0.8f, 0.8f),
+			XMFLOAT2(0.0f, 0.0f),
+			XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+			vertexShader,
+			tintPixelShader
+		);
+		basicPsMaterial->AddTextureSRV(0, pavingStonesSrv.Get());
+		basicPsMaterial->AddTextureSRV(1, pavingStonesNormalsSrv.Get());
+		basicPsMaterial->AddSampler(0, texSampler.Get());
+		materialVec.push_back(basicPsMaterial);
+
 		tintPsMaterial = std::make_shared<Material>(
 			XMFLOAT2(1.0f, 3.0f),
 			XMFLOAT2(0.0f, 0.0f),
@@ -234,32 +312,40 @@ Game::Game()
 
 	// Create entities
 	{
-		// Tint entities & custom shader entity
-		entityVec.push_back(std::make_shared<Entity>(cubeMesh, combinedPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(cylinderMesh, tintPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(helixMesh, tintPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(sphereMesh, customPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(torusMesh, tintPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(quadMesh, tintPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, tintPsMaterial));
+		entityVec.push_back(std::make_shared<Entity>(cubeMesh, basicPsMaterial));
+		entityVec.push_back(std::make_shared<Entity>(cylinderMesh, basicPsMaterial));
+		entityVec.push_back(std::make_shared<Entity>(helixMesh, basicPsMaterial));
+		entityVec.push_back(std::make_shared<Entity>(sphereMesh, basicPsMaterial));
+		entityVec.push_back(std::make_shared<Entity>(torusMesh, basicPsMaterial));
+		entityVec.push_back(std::make_shared<Entity>(quadMesh, basicPsMaterial));
+		entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, basicPsMaterial));
 
-		// UV entities
-		entityVec.push_back(std::make_shared<Entity>(cubeMesh, uvPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(cylinderMesh, uvPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(helixMesh, uvPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(sphereMesh, uvPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(torusMesh, uvPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(quadMesh, uvPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, uvPsMaterial));
-
-		// Normals entities
-		entityVec.push_back(std::make_shared<Entity>(cubeMesh, normalsPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(cylinderMesh, normalsPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(helixMesh, normalsPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(sphereMesh, normalsPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(torusMesh, normalsPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(quadMesh, normalsPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, normalsPsMaterial));
+		//// Tint entities & custom shader entity
+		//entityVec.push_back(std::make_shared<Entity>(cubeMesh, combinedPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(cylinderMesh, tintPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(helixMesh, tintPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(sphereMesh, customPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(torusMesh, tintPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(quadMesh, tintPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, tintPsMaterial));
+		//
+		//// UV entities
+		//entityVec.push_back(std::make_shared<Entity>(cubeMesh, uvPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(cylinderMesh, uvPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(helixMesh, uvPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(sphereMesh, uvPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(torusMesh, uvPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(quadMesh, uvPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, uvPsMaterial));
+		//
+		//// Normals entities
+		//entityVec.push_back(std::make_shared<Entity>(cubeMesh, normalsPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(cylinderMesh, normalsPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(helixMesh, normalsPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(sphereMesh, normalsPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(torusMesh, normalsPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(quadMesh, normalsPsMaterial));
+		//entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, normalsPsMaterial));
 
 
 		// Offset entities
@@ -274,6 +360,17 @@ Game::Game()
 
 			entityVec[i]->GetTransform().SetPosition(XMFLOAT3((i % 7) * 2.5f, yPos, 0.0f));
 		}
+	}
+
+	// Create skybox
+	{
+		skybox = std::make_shared<Skybox>(cubeMesh, texSampler.Get(), skyVertexShader.Get(), skyPixelShader.Get(),
+			L"../../Assets/Textures/Skies/ColdSunset/right.png",
+			L"../../Assets/Textures/Skies/ColdSunset/left.png",
+			L"../../Assets/Textures/Skies/ColdSunset/up.png",
+			L"../../Assets/Textures/Skies/ColdSunset/down.png",
+			L"../../Assets/Textures/Skies/ColdSunset/front.png",
+			L"../../Assets/Textures/Skies/ColdSunset/back.png");
 	}
 }
 
@@ -338,7 +435,7 @@ Microsoft::WRL::ComPtr<ID3D11InputLayout> Game::LoadInputLayout(ID3DBlob* vertex
 	// Temporary input layout pointer
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> tempInputLayout;
 
-	D3D11_INPUT_ELEMENT_DESC inputElements[3] = {};
+	D3D11_INPUT_ELEMENT_DESC inputElements[4] = {};
 
 	// Set up the first element - a position, which is 3 float values
 	inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;				// Most formats are described as color channels; really it just means "Three 32-bit floats"
@@ -355,13 +452,18 @@ Microsoft::WRL::ComPtr<ID3D11InputLayout> Game::LoadInputLayout(ID3DBlob* vertex
 	inputElements[2].SemanticName = "NORMAL";						
 	inputElements[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 
+	// Set up tangent element - 3 floats
+	inputElements[3].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	inputElements[3].SemanticName = "TANGENT";
+	inputElements[3].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+
 	// Create the input layout, verifying our description against actual shader code
 	Graphics::Device->CreateInputLayout(
 		inputElements,							// An array of descriptions
-		3,										// How many elements in that array?
+		4,										// How many elements in that array?
 		vertexShaderBlob->GetBufferPointer(),	// Pointer to the code of a shader that uses this layout
 		vertexShaderBlob->GetBufferSize(),		// Size of the shader code that uses this layout
-		tempInputLayout.GetAddressOf());			// Address of the resulting ID3D11InputLayout pointer
+		tempInputLayout.GetAddressOf());		// Address of the resulting ID3D11InputLayout pointer
 
 	return tempInputLayout;
 }
@@ -378,7 +480,6 @@ void Game::OnResize()
 	}
 }
 
-
 // --------------------------------------------------------
 // Update your game here - user input, move objects, AI, etc.
 // --------------------------------------------------------
@@ -394,6 +495,12 @@ void Game::Update(float deltaTime, float totalTime)
 
 	// Update Camera
 	cameraVec[activeCameraIndex]->Update(deltaTime);
+
+	// Rotate entities
+	for (unsigned int i = 0; i < entityVec.size(); ++i)
+	{
+		entityVec[i]->GetTransform().Rotate(0.0f, 0.3f * deltaTime, 0.0f);
+	}
 }
 
 // --------------------------------------------------------
@@ -411,12 +518,12 @@ void Game::Draw(float deltaTime, float totalTime)
 	}
 	
 	// Draw geometry
-	//for (unsigned int i = 0; i < meshVec.size(); ++i)
 	for (unsigned int i = 0; i < entityVec.size(); ++i)
 	{
 		// Set vertex shader data
 		VertexShaderData vsData{};
 		vsData.WorldMatrix = entityVec[i]->GetTransform().GetWorldMatrix();
+		vsData.WorldInverseTransposeMatrix = entityVec[i]->GetTransform().GetWorldInverseTransposeMatrix();
 		vsData.ViewMatrix = cameraVec[activeCameraIndex]->GetViewMatrix();
 		vsData.ProjectionMatrix = cameraVec[activeCameraIndex]->GetProjectionMatrix();
 
@@ -431,7 +538,13 @@ void Game::Draw(float deltaTime, float totalTime)
 		psData.UVScale = entityVec[i]->GetMaterial()->GetUVScale();
 		psData.UVOffset = entityVec[i]->GetMaterial()->GetUVOffset();
 		psData.ColorTint = entityVec[i]->GetMaterial()->GetColorTint();
+		psData.CameraPosition = cameraVec[activeCameraIndex]->GetPosition();
 		psData.TotalTime = totalTime;
+		psData.AmbientColor = ambientColor;
+		for (unsigned int i = 0; i < 5; ++i)
+		{
+			psData.Lights[i] = lights[i];
+		}
 
 		FillAndBindNextConstantBuffer(
 			&psData,
@@ -443,7 +556,20 @@ void Game::Draw(float deltaTime, float totalTime)
 		entityVec[i]->GetMaterial()->BindTexturesAndSamplers();
 
 		// Draw entity
-		entityVec[i]->Draw(deltaTime, totalTime);
+		entityVec[i]->Draw(deltaTime);
+	}
+
+	// Draw skybox
+	{
+		// Set skybox data and bind cbuffer
+		SkyVertexShaderData vsData = {};
+		vsData.ViewMatrix = cameraVec[activeCameraIndex]->GetViewMatrix();
+		vsData.ProjectionMatrix = cameraVec[activeCameraIndex]->GetProjectionMatrix();
+
+		FillAndBindNextConstantBuffer(&vsData, sizeof(SkyVertexShaderData), D3D11_VERTEX_SHADER, 0);
+
+		// Draw
+		skybox->Draw(totalTime);
 	}
 
 	// Draw ImGui
@@ -566,7 +692,7 @@ void Game::ImGuiBuildUI()
 		ImGui::Text("Window Size: %dx%dpx", Window::Width(), Window::Height());
 
 		// BG color picker
-		ImGui::ColorEdit4("BG Color", bgColor);
+		ImGui::ColorEdit4("BG Color", bgColor, ImGuiColorEditFlags_NoInputs);
 
 		ImGui::TreePop();
 	}
@@ -622,7 +748,7 @@ void Game::ImGuiBuildUI()
 				// Color tint
 				XMFLOAT4 colorTint = materialVec[i]->GetColorTint();
 				float tintArray[4] = { colorTint.x, colorTint.y, colorTint.z, colorTint.w };
-				ImGui::ColorEdit4(std::string("Color Tint##" + std::to_string(i)).c_str(), tintArray);
+				ImGui::ColorEdit4(std::string("Color Tint##" + std::to_string(i)).c_str(), tintArray, ImGuiColorEditFlags_NoInputs);
 				materialVec[i]->SetColorTint(XMFLOAT4(tintArray));
 
 				// Display textures
@@ -683,6 +809,40 @@ void Game::ImGuiBuildUI()
 				float scArray[3] = { scale.x, scale.y, scale.z };
 				ImGui::DragFloat3(std::string("Scale##" + std::to_string(i)).c_str(), scArray, 0.01f, 0.0f, 10.0f);
 				entityVec[i]->GetTransform().SetScale(scArray[0], scArray[1], scArray[2]);
+
+				ImGui::TreePop();
+			}
+		}
+
+		ImGui::TreePop();
+	}
+
+	// Light controls
+	if (ImGui::TreeNode("Light Controls"))
+	{
+		// Ambient color
+		float ambientColorTemp[3] = { ambientColor.x, ambientColor.y, ambientColor.z };
+		ImGui::ColorEdit3("Ambient Color", ambientColorTemp, ImGuiColorEditFlags_NoInputs);
+		ambientColor = XMFLOAT3(ambientColorTemp);
+
+		// Light controls
+		for (unsigned int i = 0; i < 5; ++i)
+		{
+			if (ImGui::TreeNode(std::string("Light " + std::to_string(i + 1)).c_str()))
+			{
+				// Type
+				int type = lights[i].Type;
+				ImGui::Text(std::string("Type: " + std::to_string(type)).c_str());
+				
+				// Color
+				float colorTemp[3] = { lights[i].Color.x, lights[i].Color.y, lights[i].Color.z };
+				ImGui::ColorEdit3(std::string("Color##" + std::to_string(i)).c_str(), colorTemp, ImGuiColorEditFlags_NoInputs);
+				lights[i].Color = XMFLOAT3(colorTemp);
+
+				// Intensity
+				float intensityTemp = lights[i].Intensity;
+				ImGui::DragFloat(std::string("Intensity##" + std::to_string(i)).c_str(), &intensityTemp, 0.1f, 0.0f, 20.0f);
+				lights[i].Intensity = intensityTemp;
 
 				ImGui::TreePop();
 			}

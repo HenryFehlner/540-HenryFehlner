@@ -24,9 +24,6 @@ struct PixelShaderData
 	DirectX::XMFLOAT3 CameraPosition;
 	float TotalTime;
 
-	DirectX::XMFLOAT3 AmbientColor;
-	float padding1;
-
 	Light Lights[5];
 };
 

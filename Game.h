@@ -28,7 +28,6 @@ public:
 
 private:
 	// Global lighting data
-	DirectX::XMFLOAT3 ambientColor;
 	Light lights[5];
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
@@ -41,7 +40,7 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> skyVertexShader;
 
-	Microsoft::WRL::ComPtr<ID3D11PixelShader> tintPixelShader;
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> basicPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> debugUVsPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> debugNormalsPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> customPixelShader;
@@ -87,11 +86,31 @@ private:
 	// Textures
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pavingStonesSrv;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> pavingStonesNormalsSrv;
+
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> graffitiSrv;
+
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> flatNormalsSrv;
 
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> rustedMetalAlbedoSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> rustedMetalNormalsSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> rustedMetalRoughnessSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> rustedMetalMetalnessSrv;
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalPanelAlbedoSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalPanelNormalsSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalPanelRoughnessSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> metalPanelMetalnessSrv;
+
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodAlbedoSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodNormalsSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodRoughnessSrv;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> woodMetalnessSrv;
+
 	// Materials
-	std::shared_ptr<Material> basicPsMaterial;
+	std::shared_ptr<Material> pavingStonesMat;
+	std::shared_ptr<Material> rustedMetalMat;
+	std::shared_ptr<Material> metalPanelMat;
+	std::shared_ptr<Material> woodMat;
 	std::shared_ptr<Material> tintPsMaterial;
 	std::shared_ptr<Material> uvPsMaterial;
 	std::shared_ptr<Material> normalsPsMaterial;

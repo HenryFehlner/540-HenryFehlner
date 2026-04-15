@@ -8,14 +8,15 @@ cbuffer ExternalData : register(b0)
     float4 colorTint;
     float3 cameraPosition;
     float totalTime;
-    float3 ambientColor;
     Light lights[5];
 };
 
 // Texture resources
-Texture2D SurfaceTexture  : register(t0);
-Texture2D NormalMap       : register(t1);
-SamplerState BasicSampler : register(s0);
+Texture2D Albedo            : register(t0);
+Texture2D NormalMap         : register(t1);
+Texture2D RoughnessMap      : register(t2);
+Texture2D MetalnessMap      : register(t3);
+SamplerState BasicSampler   : register(s0);
 
 // --------------------------------------------------------
 // The entry point (main method) for our pixel shader
@@ -34,7 +35,14 @@ float4 main(VertexToPixel input) : SV_TARGET
     // Apply UV offset and scale
     float2 transformedUV = (input.uv * uvScale) + uvOffset;
     
-    // Normal mapping
+    // Get surface color from texture and un-gamma correct
+    float4 albedoColor = Albedo.Sample(BasicSampler, transformedUV);
+    float4 correctedAlbedoColor = float4(pow(albedoColor.rgb, 2.2), albedoColor.a);
+    
+    //correctedAlbedoColor = albedoColor;
+    //correctedAlbedoColor = float4(1, 0, 0, 1);
+    
+    // Get and map normals
     {
         // Unpack normal from texture
         float3 sampledNormal = NormalMap.Sample(BasicSampler, transformedUV).xyz;
@@ -49,9 +57,15 @@ float4 main(VertexToPixel input) : SV_TARGET
         // Transform normal from map
         input.normal = mul(unpackedNormal, TBN);
     }
-	
-    // Get surface color from texture
-    float4 surfaceColor = SurfaceTexture.Sample(BasicSampler, transformedUV);
+    
+    // Get roughness value
+    float roughness = RoughnessMap.Sample(BasicSampler, transformedUV).r;
+    
+    // Get metalness value
+    float metalness = MetalnessMap.Sample(BasicSampler, transformedUV).r;
+    
+    // Get specular color
+    float3 specularColor = lerp(0.04, correctedAlbedoColor.rgb, metalness);
     
     // Lighting operations
     float3 sumOfLights = float3(0, 0, 0);
@@ -64,20 +78,23 @@ float4 main(VertexToPixel input) : SV_TARGET
         switch (currentLight.type)
         {
             case LIGHT_TYPE_DIRECTIONAL:
-                sumOfLights += CalcDirectionalLight(currentLight, input, surfaceColor, cameraPosition);
+                sumOfLights += CalcDirectionalLight(currentLight, input, correctedAlbedoColor.rgb, roughness, metalness, specularColor, cameraPosition);
                 break;
             case LIGHT_TYPE_POINT:
-                sumOfLights += CalcPointLight(currentLight, input, surfaceColor, cameraPosition);
+                sumOfLights += CalcPointLight(currentLight, input, correctedAlbedoColor.rgb, roughness, metalness, specularColor, cameraPosition);
                 break;
             case LIGHT_TYPE_SPOT:
-                sumOfLights += CalcSpotLight(currentLight, input, surfaceColor, cameraPosition);
+                sumOfLights += CalcSpotLight(currentLight, input, correctedAlbedoColor.rgb, roughness, metalness, specularColor, cameraPosition);
                 break;
         }
     }
 	
-	// Combine ambient, diffuse, and specular terms and apply color tint
-    float4 finalColor = surfaceColor * float4(sumOfLights + ambientColor, 1.0) * colorTint;
+	// Combine diffuse and specular terms and apply color tint
+    float4 finalColor = correctedAlbedoColor * float4(sumOfLights, 1.0) * colorTint;
+    
+    // Gamma correction (only rgb portion)
+    float4 finalGammaColor = float4(pow(finalColor.rgb, 1.0 / 2.2), finalColor.a);
 	
 	// Return final color
-    return finalColor;
+    return finalGammaColor;
 }

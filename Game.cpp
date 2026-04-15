@@ -98,7 +98,7 @@ Game::Game()
 		skyVertexShader = LoadVertexShader(L"SkyVertexShader.cso");
 
 		// Pixel shaders
-		tintPixelShader = LoadPixelShader(L"PixelShader.cso");
+		basicPixelShader = LoadPixelShader(L"PixelShader.cso");
 		debugUVsPixelShader = LoadPixelShader(L"DebugUVsPS.cso");
 		debugNormalsPixelShader = LoadPixelShader(L"DebugNormalsPS.cso");
 		customPixelShader = LoadPixelShader(L"CustomPS.cso");
@@ -122,53 +122,49 @@ Game::Game()
 		//  - Once you start applying different shaders to different objects,
 		//    these calls will need to happen multiple times per frame
 		Graphics::Context->VSSetShader(vertexShader.Get(), 0, 0);
-		Graphics::Context->PSSetShader(tintPixelShader.Get(), 0, 0);
+		Graphics::Context->PSSetShader(basicPixelShader.Get(), 0, 0);
 	}
 
 	// Set up lighting
 	{
-		// Set up ambient color
-		ambientColor = XMFLOAT3(0.1f, 0.1f, 0.2f);
-
-		// Lights
-		// Red directional in +X direction
+		// White directional in +X direction
 		lights[0] = {};
 		lights[0].Type = LIGHT_TYPE_DIRECTIONAL;
 		lights[0].Direction = XMFLOAT3(1.0f, 0.0f, 0.0f);
-		lights[0].Color = XMFLOAT3(1.0f, 0.0f, 0.0f);
+		lights[0].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
 		lights[0].Intensity = 1.0f;
-
+		
 		// Green directional in -Y direction
 		lights[1] = {};
 		lights[1].Type = LIGHT_TYPE_DIRECTIONAL;
 		lights[1].Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
 		lights[1].Color = XMFLOAT3(0.0f, 1.0f, 0.0f);
 		lights[1].Intensity = 1.0f;
-
+		
 		// Blue directional in -X, +Y direction
 		lights[2] = {};
 		lights[2].Type = LIGHT_TYPE_DIRECTIONAL;
 		lights[2].Direction = XMFLOAT3(-1.0f, 1.0f, 0.0f);
 		lights[2].Color = XMFLOAT3(0.0f, 0.0f, 1.0f);
 		lights[2].Intensity = 1.0f;
-
+		
 		// White point positioned inside the helix
 		lights[3] = {};
 		lights[3].Type = LIGHT_TYPE_POINT;
 		lights[3].Position = XMFLOAT3(5.0f, 0.0f, 0.0f);
 		lights[3].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
-		lights[3].Intensity = 2.0f;
+		lights[3].Intensity = 5.0f;
 		lights[3].Range = 8.0f;
-
-		// Magenta spot positioned above the one-sided quad
+		
+		// Yellow spot positioned above the one-sided quad
 		lights[4] = {};
 		lights[4].Type = LIGHT_TYPE_SPOT;
 		lights[4].Position = XMFLOAT3(12.5f, 2.0f, 0.0f);
 		lights[4].Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
-		lights[4].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+		lights[4].Color = XMFLOAT3(1.0f, 1.0f, 0.0f);
 		lights[4].SpotInnerAngle = 0.2f;
 		lights[4].SpotOuterAngle = 0.4f;
-		lights[4].Intensity = 1.0f;
+		lights[4].Intensity = 2.0f;
 		lights[4].Range = 12.0f;
 	}
 
@@ -176,24 +172,27 @@ Game::Game()
 	{
 		// Shader Resource Views
 		// Loads image file and creates texture and srv
+		
 		// Paving stones texture
-		DirectX::CreateWICTextureFromFile(
-			Graphics::Device.Get(),
-			Graphics::Context.Get(),
-			FixPath(L"../../Assets/Textures/PavingStones2K/PavingStones138_2K-PNG_Color.png").c_str(),
-			//FixPath(L"../../Assets/Textures/Skies/ColdSunset/front.png").c_str(),
-			0,
-			pavingStonesSrv.GetAddressOf());
-		Graphics::Context->PSSetShaderResources(0, 1, pavingStonesSrv.GetAddressOf());
+		{
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/PavingStones2K/PavingStones138_2K-PNG_Color.png").c_str(),
+				//FixPath(L"../../Assets/Textures/Skies/ColdSunset/front.png").c_str(),
+				0,
+				pavingStonesSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(0, 1, pavingStonesSrv.GetAddressOf());
 
-		// Paving stones normal map
-		DirectX::CreateWICTextureFromFile(
-			Graphics::Device.Get(),
-			Graphics::Context.Get(),
-			FixPath(L"../../Assets/Textures/PavingStones2K/PavingStones138_2K-PNG_NormalDX.png").c_str(),
-			0,
-			pavingStonesNormalsSrv.GetAddressOf());
-		Graphics::Context->PSSetShaderResources(1, 1, pavingStonesNormalsSrv.GetAddressOf());
+			// Paving stones normal map
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/PavingStones2K/PavingStones138_2K-PNG_NormalDX.png").c_str(),
+				0,
+				pavingStonesNormalsSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(1, 1, pavingStonesNormalsSrv.GetAddressOf());
+		}
 
 		// Graffiti texture
 		DirectX::CreateWICTextureFromFile(
@@ -213,6 +212,111 @@ Game::Game()
 			flatNormalsSrv.GetAddressOf());
 		Graphics::Context->PSSetShaderResources(3, 1, flatNormalsSrv.GetAddressOf());
 
+		// Rusted metal texture
+		{
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/RustedMetal2K/Metal053B_2K-PNG_Color.png").c_str(),
+				0,
+				rustedMetalAlbedoSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(4, 1, rustedMetalAlbedoSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/RustedMetal2K/Metal053B_2K-PNG_NormalDX.png").c_str(),
+				0,
+				rustedMetalNormalsSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(5, 1, rustedMetalNormalsSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/RustedMetal2K/Metal053B_2K-PNG_Roughness.png").c_str(),
+				0,
+				rustedMetalRoughnessSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(6, 1, rustedMetalRoughnessSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/RustedMetal2K/Metal053B_2K-PNG_Metalness.png").c_str(),
+				0,
+				rustedMetalMetalnessSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(7, 1, rustedMetalMetalnessSrv.GetAddressOf());
+		}
+
+		// Metal panel texture
+		{
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/MetalPanels/rusted-panels_albedo.png").c_str(),
+				0,
+				metalPanelAlbedoSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(8, 1, metalPanelAlbedoSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/MetalPanels/rusted-panels_normal-ogl.png").c_str(),
+				0,
+				metalPanelNormalsSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(9, 1, metalPanelNormalsSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/MetalPanels/rusted-panels_roughness.png").c_str(),
+				0,
+				metalPanelRoughnessSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(10, 1, metalPanelRoughnessSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/MetalPanels/rusted-panels_metallic.png").c_str(),
+				0,
+				metalPanelMetalnessSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(11, 1, metalPanelMetalnessSrv.GetAddressOf());
+		}
+
+		// Wood texture
+		{
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/Wood/wood_albedo.png").c_str(),
+				0,
+				woodAlbedoSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(12, 1, woodAlbedoSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/Wood/wood_normals.png").c_str(),
+				0,
+				woodNormalsSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(13, 1, woodNormalsSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/Wood/wood_roughness.png").c_str(),
+				0,
+				woodRoughnessSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(14, 1, woodRoughnessSrv.GetAddressOf());
+
+			DirectX::CreateWICTextureFromFile(
+				Graphics::Device.Get(),
+				Graphics::Context.Get(),
+				FixPath(L"../../Assets/Textures/Wood/wood_metal.png").c_str(),
+				0,
+				woodMetalnessSrv.GetAddressOf());
+			Graphics::Context->PSSetShaderResources(15, 1, woodMetalnessSrv.GetAddressOf());
+		}
+
 		// Texture Sampler State
 		// Describe texture sampler
 		D3D11_SAMPLER_DESC samplerDesc = {};
@@ -230,24 +334,67 @@ Game::Game()
 	
 	// Create materials
 	{
-		basicPsMaterial = std::make_shared<Material>(
+		pavingStonesMat = std::make_shared<Material>(
 			XMFLOAT2(0.8f, 0.8f),
 			XMFLOAT2(0.0f, 0.0f),
 			XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
 			vertexShader,
-			tintPixelShader
+			basicPixelShader
 		);
-		basicPsMaterial->AddTextureSRV(0, pavingStonesSrv.Get());
-		basicPsMaterial->AddTextureSRV(1, pavingStonesNormalsSrv.Get());
-		basicPsMaterial->AddSampler(0, texSampler.Get());
-		materialVec.push_back(basicPsMaterial);
+		pavingStonesMat->AddTextureSRV(0, pavingStonesSrv.Get());
+		pavingStonesMat->AddTextureSRV(1, pavingStonesNormalsSrv.Get());
+		//basicPsMaterial->AddTextureSRV(1, flatNormalsSrv.Get());
+		pavingStonesMat->AddSampler(0, texSampler.Get());
+		materialVec.push_back(pavingStonesMat);
+
+		rustedMetalMat = std::make_shared<Material>(
+			XMFLOAT2(0.8f, 0.8f),
+			XMFLOAT2(0.0f, 0.0f),
+			XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+			vertexShader,
+			basicPixelShader
+		);
+		rustedMetalMat->AddTextureSRV(0, rustedMetalAlbedoSrv.Get());
+		rustedMetalMat->AddTextureSRV(1, rustedMetalNormalsSrv.Get());
+		rustedMetalMat->AddTextureSRV(2, rustedMetalRoughnessSrv.Get());
+		rustedMetalMat->AddTextureSRV(3, rustedMetalMetalnessSrv.Get());
+		rustedMetalMat->AddSampler(0, texSampler.Get());
+		materialVec.push_back(rustedMetalMat);
+
+		metalPanelMat = std::make_shared<Material>(
+			XMFLOAT2(2.0f, 2.0f),
+			XMFLOAT2(0.0f, 0.0f),
+			XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+			vertexShader,
+			basicPixelShader
+		);
+		metalPanelMat->AddTextureSRV(0, metalPanelAlbedoSrv.Get());
+		metalPanelMat->AddTextureSRV(1, metalPanelNormalsSrv.Get());
+		metalPanelMat->AddTextureSRV(2, metalPanelRoughnessSrv.Get());
+		metalPanelMat->AddTextureSRV(3, metalPanelMetalnessSrv.Get());
+		metalPanelMat->AddSampler(0, texSampler.Get());
+		materialVec.push_back(metalPanelMat);
+
+		woodMat = std::make_shared<Material>(
+			XMFLOAT2(2.0f, 2.0f),
+			XMFLOAT2(0.0f, 0.0f),
+			XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f),
+			vertexShader,
+			basicPixelShader
+		);
+		woodMat->AddTextureSRV(0, woodAlbedoSrv.Get());
+		woodMat->AddTextureSRV(1, woodNormalsSrv.Get());
+		woodMat->AddTextureSRV(2, woodRoughnessSrv.Get());
+		woodMat->AddTextureSRV(3, woodMetalnessSrv.Get());
+		woodMat->AddSampler(0, texSampler.Get());
+		materialVec.push_back(woodMat);
 
 		tintPsMaterial = std::make_shared<Material>(
 			XMFLOAT2(1.0f, 3.0f),
 			XMFLOAT2(0.0f, 0.0f),
-			XMFLOAT4(0.7f, 1.0f, 0.7f, 1.0f), 
-			vertexShader, 
-			tintPixelShader
+			XMFLOAT4(0.7f, 1.0f, 0.7f, 1.0f),
+			vertexShader,
+			basicPixelShader
 		);
 		tintPsMaterial->AddTextureSRV(0, pavingStonesSrv.Get());
 		tintPsMaterial->AddSampler(0, texSampler.Get());
@@ -256,8 +403,8 @@ Game::Game()
 		uvPsMaterial = std::make_shared<Material>(
 			XMFLOAT2(1.0f, 1.0f),
 			XMFLOAT2(0.0f, 0.0f),
-			XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f), 
-			vertexShader, 
+			XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f),
+			vertexShader,
 			debugUVsPixelShader);
 		uvPsMaterial->AddSampler(0, texSampler.Get());
 		materialVec.push_back(uvPsMaterial);
@@ -265,8 +412,8 @@ Game::Game()
 		normalsPsMaterial = std::make_shared<Material>(
 			XMFLOAT2(1.0f, 1.0f),
 			XMFLOAT2(0.0f, 0.0f),
-			XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f), 
-			vertexShader, 
+			XMFLOAT4(1.0f, 0.0f, 0.0f, 1.0f),
+			vertexShader,
 			debugNormalsPixelShader);
 		normalsPsMaterial->AddSampler(0, texSampler.Get());
 		materialVec.push_back(normalsPsMaterial);
@@ -274,8 +421,8 @@ Game::Game()
 		customPsMaterial = std::make_shared<Material>(
 			XMFLOAT2(1.0f, 1.0f),
 			XMFLOAT2(0.0f, 0.0f),
-			XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f), 
-			vertexShader, 
+			XMFLOAT4(1.0f, 1.0f, 0.0f, 1.0f),
+			vertexShader,
 			customPixelShader);
 		customPsMaterial->AddSampler(0, texSampler.Get());
 		materialVec.push_back(customPsMaterial);
@@ -312,41 +459,13 @@ Game::Game()
 
 	// Create entities
 	{
-		entityVec.push_back(std::make_shared<Entity>(cubeMesh, basicPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(cylinderMesh, basicPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(helixMesh, basicPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(sphereMesh, basicPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(torusMesh, basicPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(quadMesh, basicPsMaterial));
-		entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, basicPsMaterial));
-
-		//// Tint entities & custom shader entity
-		//entityVec.push_back(std::make_shared<Entity>(cubeMesh, combinedPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(cylinderMesh, tintPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(helixMesh, tintPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(sphereMesh, customPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(torusMesh, tintPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(quadMesh, tintPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, tintPsMaterial));
-		//
-		//// UV entities
-		//entityVec.push_back(std::make_shared<Entity>(cubeMesh, uvPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(cylinderMesh, uvPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(helixMesh, uvPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(sphereMesh, uvPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(torusMesh, uvPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(quadMesh, uvPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, uvPsMaterial));
-		//
-		//// Normals entities
-		//entityVec.push_back(std::make_shared<Entity>(cubeMesh, normalsPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(cylinderMesh, normalsPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(helixMesh, normalsPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(sphereMesh, normalsPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(torusMesh, normalsPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(quadMesh, normalsPsMaterial));
-		//entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, normalsPsMaterial));
-
+		entityVec.push_back(std::make_shared<Entity>(cubeMesh, metalPanelMat));
+		entityVec.push_back(std::make_shared<Entity>(cylinderMesh, rustedMetalMat));
+		entityVec.push_back(std::make_shared<Entity>(helixMesh, metalPanelMat));
+		entityVec.push_back(std::make_shared<Entity>(sphereMesh, rustedMetalMat));
+		entityVec.push_back(std::make_shared<Entity>(torusMesh, woodMat));
+		entityVec.push_back(std::make_shared<Entity>(quadMesh, rustedMetalMat));
+		entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, metalPanelMat));
 
 		// Offset entities
 		for (UINT i = 0; i < entityVec.size(); ++i)
@@ -540,7 +659,6 @@ void Game::Draw(float deltaTime, float totalTime)
 		psData.ColorTint = entityVec[i]->GetMaterial()->GetColorTint();
 		psData.CameraPosition = cameraVec[activeCameraIndex]->GetPosition();
 		psData.TotalTime = totalTime;
-		psData.AmbientColor = ambientColor;
 		for (unsigned int i = 0; i < 5; ++i)
 		{
 			psData.Lights[i] = lights[i];
@@ -820,11 +938,6 @@ void Game::ImGuiBuildUI()
 	// Light controls
 	if (ImGui::TreeNode("Light Controls"))
 	{
-		// Ambient color
-		float ambientColorTemp[3] = { ambientColor.x, ambientColor.y, ambientColor.z };
-		ImGui::ColorEdit3("Ambient Color", ambientColorTemp, ImGuiColorEditFlags_NoInputs);
-		ambientColor = XMFLOAT3(ambientColorTemp);
-
 		// Light controls
 		for (unsigned int i = 0; i < 5; ++i)
 		{

@@ -96,6 +96,7 @@ Game::Game()
 		// Vertex shaders
 		vertexShader = LoadVertexShader(L"VertexShader.cso");
 		skyVertexShader = LoadVertexShader(L"SkyVertexShader.cso");
+		shadowVertexShader = LoadVertexShader(L"ShadowMapVS.cso");
 
 		// Pixel shaders
 		basicPixelShader = LoadPixelShader(L"PixelShader.cso");
@@ -127,52 +128,52 @@ Game::Game()
 
 	// Set up lighting
 	{
-		// White directional in +X direction
+		// White directional in -Y, +Z direction
 		lights[0] = {};
 		lights[0].Type = LIGHT_TYPE_DIRECTIONAL;
-		lights[0].Direction = XMFLOAT3(1.0f, 0.0f, 0.0f);
+		lights[0].Direction = XMFLOAT3(0.0f, -1.0f, 1.0f);
 		lights[0].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
 		lights[0].Intensity = 1.0f;
-		
-		// Green directional in -Y direction
+
+		// Red directional in +X, -Y direction
 		lights[1] = {};
 		lights[1].Type = LIGHT_TYPE_DIRECTIONAL;
-		lights[1].Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
-		lights[1].Color = XMFLOAT3(0.0f, 1.0f, 0.0f);
+		lights[1].Direction = XMFLOAT3(1.0f, -1.0f, 0.0f);
+		lights[1].Color = XMFLOAT3(1.0f, 0.0f, 0.0f);
 		lights[1].Intensity = 1.0f;
 		
-		// Blue directional in -X, +Y direction
+		// Blue directional in -X, -Y direction
 		lights[2] = {};
 		lights[2].Type = LIGHT_TYPE_DIRECTIONAL;
-		lights[2].Direction = XMFLOAT3(-1.0f, 1.0f, 0.0f);
+		lights[2].Direction = XMFLOAT3(-1.0f, -1.0f, 0.0f);
 		lights[2].Color = XMFLOAT3(0.0f, 0.0f, 1.0f);
 		lights[2].Intensity = 1.0f;
-		
-		// White point positioned inside the helix
-		lights[3] = {};
-		lights[3].Type = LIGHT_TYPE_POINT;
-		lights[3].Position = XMFLOAT3(5.0f, 0.0f, 0.0f);
-		lights[3].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
-		lights[3].Intensity = 5.0f;
-		lights[3].Range = 8.0f;
-		
-		// Yellow spot positioned above the one-sided quad
-		lights[4] = {};
-		lights[4].Type = LIGHT_TYPE_SPOT;
-		lights[4].Position = XMFLOAT3(12.5f, 2.0f, 0.0f);
-		lights[4].Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
-		lights[4].Color = XMFLOAT3(1.0f, 1.0f, 0.0f);
-		lights[4].SpotInnerAngle = 0.2f;
-		lights[4].SpotOuterAngle = 0.4f;
-		lights[4].Intensity = 2.0f;
-		lights[4].Range = 12.0f;
+
+		//// White point positioned inside the helix
+		//lights[3] = {};
+		//lights[3].Type = LIGHT_TYPE_POINT;
+		//lights[3].Position = XMFLOAT3(5.0f, 0.0f, 0.0f);
+		//lights[3].Color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+		//lights[3].Intensity = 5.0f;
+		//lights[3].Range = 8.0f;
+		//
+		//// Green spot positioned above the one-sided quad
+		//lights[4] = {};
+		//lights[4].Type = LIGHT_TYPE_SPOT;
+		//lights[4].Position = XMFLOAT3(12.5f, 2.0f, 0.0f);
+		//lights[4].Direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+		//lights[4].Color = XMFLOAT3(0.0f, 1.0f, 0.0f);
+		//lights[4].SpotInnerAngle = 0.2f;
+		//lights[4].SpotOuterAngle = 0.4f;
+		//lights[4].Intensity = 2.0f;
+		//lights[4].Range = 12.0f;
 	}
 
 	// Load textures
 	{
 		// Shader Resource Views
 		// Loads image file and creates texture and srv
-		
+
 		// Paving stones texture
 		{
 			DirectX::CreateWICTextureFromFile(
@@ -234,17 +235,17 @@ Game::Game()
 				Graphics::Device.Get(),
 				Graphics::Context.Get(),
 				FixPath(L"../../Assets/Textures/RustedMetal2K/Metal053B_2K-PNG_Roughness.png").c_str(),
-				0,
-				rustedMetalRoughnessSrv.GetAddressOf());
-			Graphics::Context->PSSetShaderResources(6, 1, rustedMetalRoughnessSrv.GetAddressOf());
+					0,
+					rustedMetalRoughnessSrv.GetAddressOf());
+					Graphics::Context->PSSetShaderResources(6, 1, rustedMetalRoughnessSrv.GetAddressOf());
 
-			DirectX::CreateWICTextureFromFile(
-				Graphics::Device.Get(),
-				Graphics::Context.Get(),
-				FixPath(L"../../Assets/Textures/RustedMetal2K/Metal053B_2K-PNG_Metalness.png").c_str(),
-				0,
-				rustedMetalMetalnessSrv.GetAddressOf());
-			Graphics::Context->PSSetShaderResources(7, 1, rustedMetalMetalnessSrv.GetAddressOf());
+					DirectX::CreateWICTextureFromFile(
+						Graphics::Device.Get(),
+						Graphics::Context.Get(),
+						FixPath(L"../../Assets/Textures/RustedMetal2K/Metal053B_2K-PNG_Metalness.png").c_str(),
+						0,
+						rustedMetalMetalnessSrv.GetAddressOf());
+					Graphics::Context->PSSetShaderResources(7, 1, rustedMetalMetalnessSrv.GetAddressOf());
 		}
 
 		// Metal panel texture
@@ -331,8 +332,9 @@ Game::Game()
 		Graphics::Device->CreateSamplerState(&samplerDesc, texSampler.GetAddressOf());
 		Graphics::Context->PSSetSamplers(0, 1, texSampler.GetAddressOf());
 	}
-	
+
 	// Create materials
+	{}
 	{
 		pavingStonesMat = std::make_shared<Material>(
 			XMFLOAT2(0.8f, 0.8f),
@@ -440,6 +442,7 @@ Game::Game()
 	}
 
 	// Create meshes
+	{}
 	{
 		cubeMesh = std::make_shared<Mesh>(FixPath("../../Assets/Meshes/cube.obj").c_str());
 		meshVec.push_back(cubeMesh);
@@ -460,25 +463,21 @@ Game::Game()
 	// Create entities
 	{
 		entityVec.push_back(std::make_shared<Entity>(cubeMesh, metalPanelMat));
-		entityVec.push_back(std::make_shared<Entity>(cylinderMesh, rustedMetalMat));
+		entityVec.push_back(std::make_shared<Entity>(cylinderMesh, woodMat));
 		entityVec.push_back(std::make_shared<Entity>(helixMesh, metalPanelMat));
 		entityVec.push_back(std::make_shared<Entity>(sphereMesh, rustedMetalMat));
 		entityVec.push_back(std::make_shared<Entity>(torusMesh, woodMat));
-		entityVec.push_back(std::make_shared<Entity>(quadMesh, rustedMetalMat));
-		entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, metalPanelMat));
 
 		// Offset entities
 		for (UINT i = 0; i < entityVec.size(); ++i)
 		{
-			float yPos = 0.0f;
-
-			if (i >= 7)
-				yPos = 2.5;
-			if (i >= 14)
-				yPos = 2.5 * 2.0;
-
-			entityVec[i]->GetTransform().SetPosition(XMFLOAT3((i % 7) * 2.5f, yPos, 0.0f));
+			entityVec[i]->GetTransform().SetPosition(XMFLOAT3(i * 2.5f, 0.0f, 0.0f));
 		}
+
+		// Create floor plane
+		entityVec.push_back(std::make_shared<Entity>(quadDoubleMesh, woodMat));
+		entityVec[entityVec.size() - 1]->GetTransform().SetPosition(XMFLOAT3(5.0f, -2.0f, 0.0f));
+		entityVec[entityVec.size() - 1]->GetTransform().SetScale(XMFLOAT3(10.0f, 1.0f, 10.0f));
 	}
 
 	// Create skybox
@@ -490,6 +489,76 @@ Game::Game()
 			L"../../Assets/Textures/Skies/ColdSunset/down.png",
 			L"../../Assets/Textures/Skies/ColdSunset/front.png",
 			L"../../Assets/Textures/Skies/ColdSunset/back.png");
+	}
+
+	// Shadows
+	{
+		// Set Resolution
+		shadowMapRes = 1024;
+
+		// Create GPU resource
+		D3D11_TEXTURE2D_DESC shadowDesc = {};
+		shadowDesc.Width = shadowMapRes;
+		shadowDesc.Height = shadowMapRes;
+		shadowDesc.ArraySize = 1;
+		shadowDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+		shadowDesc.CPUAccessFlags = 0;
+		shadowDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+		shadowDesc.MipLevels = 1;
+		shadowDesc.MiscFlags = 0;
+		shadowDesc.SampleDesc.Count = 1;
+		shadowDesc.SampleDesc.Quality = 0;
+		shadowDesc.Usage = D3D11_USAGE_DEFAULT;
+		Microsoft::WRL::ComPtr<ID3D11Texture2D> shadowTexture;
+		Graphics::Device->CreateTexture2D(&shadowDesc, 0, shadowTexture.GetAddressOf());
+
+		// Create depth/stencil view
+		D3D11_DEPTH_STENCIL_VIEW_DESC shadowDSDesc = {};
+		shadowDSDesc.Format = DXGI_FORMAT_D32_FLOAT;
+		shadowDSDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+		shadowDSDesc.Texture2D.MipSlice = 0;
+		Graphics::Device->CreateDepthStencilView(
+			shadowTexture.Get(),
+			&shadowDSDesc,
+			shadowDSV.GetAddressOf());
+
+		// Create shadow map SRV
+		D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+		srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1;
+		srvDesc.Texture2D.MostDetailedMip = 0;
+		Graphics::Device->CreateShaderResourceView(
+			shadowTexture.Get(),
+			&srvDesc,
+			shadowSRV.GetAddressOf());
+
+		// Shadow rasterizer
+		D3D11_RASTERIZER_DESC shadowRastDesc = {};
+		shadowRastDesc.FillMode = D3D11_FILL_SOLID;
+		shadowRastDesc.CullMode = D3D11_CULL_BACK;
+		shadowRastDesc.DepthClipEnable = false;
+		shadowRastDesc.DepthBias = 1000;
+		shadowRastDesc.SlopeScaledDepthBias = 1.0f;
+		Graphics::Device->CreateRasterizerState(&shadowRastDesc, &shadowRasterizer);
+
+		// Shadow sampler
+		D3D11_SAMPLER_DESC shadowSamplerDesc = {};
+		shadowSamplerDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+		shadowSamplerDesc.ComparisonFunc = D3D11_COMPARISON_LESS;
+		shadowSamplerDesc.AddressU = D3D11_TEXTURE_ADDRESS_BORDER;
+		shadowSamplerDesc.AddressV = D3D11_TEXTURE_ADDRESS_BORDER;
+		shadowSamplerDesc.AddressW = D3D11_TEXTURE_ADDRESS_BORDER;
+		shadowSamplerDesc.BorderColor[0] = 1.0f;
+		Graphics::Device->CreateSamplerState(&shadowSamplerDesc, &shadowSampler);
+
+		// Light view matrix
+		shadowCastingLightIndex = 0;
+		CreateShadowViewMat();
+
+		// Light projection matrix
+		lightProjectionSize = 15.0;
+		CreateShadowProjMat();
 	}
 }
 
@@ -562,13 +631,13 @@ Microsoft::WRL::ComPtr<ID3D11InputLayout> Game::LoadInputLayout(ID3DBlob* vertex
 	inputElements[0].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// How far into the vertex is this?  Assume it's after the previous element
 
 	// Set up the second element - a UV, a 2d coordinate
-	inputElements[1].Format = DXGI_FORMAT_R32G32_FLOAT;		
-	inputElements[1].SemanticName = "TEXCOORD";						
+	inputElements[1].Format = DXGI_FORMAT_R32G32_FLOAT;
+	inputElements[1].SemanticName = "TEXCOORD";
 	inputElements[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 
 	// Set up the third element - a normal, 3 float values
-	inputElements[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;		
-	inputElements[2].SemanticName = "NORMAL";						
+	inputElements[2].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	inputElements[2].SemanticName = "NORMAL";
 	inputElements[2].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
 
 	// Set up tangent element - 3 floats
@@ -616,7 +685,7 @@ void Game::Update(float deltaTime, float totalTime)
 	cameraVec[activeCameraIndex]->Update(deltaTime);
 
 	// Rotate entities
-	for (unsigned int i = 0; i < entityVec.size(); ++i)
+	for (unsigned int i = 0; i < entityVec.size() - 1; ++i)
 	{
 		entityVec[i]->GetTransform().Rotate(0.0f, 0.3f * deltaTime, 0.0f);
 	}
@@ -632,19 +701,84 @@ void Game::Draw(float deltaTime, float totalTime)
 	// - At the beginning of Game::Draw() before drawing *anything*
 	{
 		// Clear the back buffer (erase what's on screen) and depth buffer
-		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(),	bgColor);
+		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(), bgColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
 	}
-	
+
+	// Shadow map render
+	{
+		// Clear shadow map
+		Graphics::Context->ClearDepthStencilView(shadowDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+		// Enable rasterizer state
+		Graphics::Context->RSSetState(shadowRasterizer.Get());
+
+		// Set up output merger
+		ID3D11RenderTargetView* nullRTV{};
+		Graphics::Context->OMSetRenderTargets(1, &nullRTV, shadowDSV.Get());
+
+		// Deactivate pixel shader
+		Graphics::Context->PSSetShader(0, 0, 0);
+
+		// Change viewport
+		D3D11_VIEWPORT viewport = {};
+		viewport.Width = (float)shadowMapRes;
+		viewport.Height = (float)shadowMapRes;
+		viewport.MaxDepth = 1.0f;
+		Graphics::Context->RSSetViewports(1, &viewport);
+
+		// Render entities
+		Graphics::Context->VSSetShader(shadowVertexShader.Get(), 0, 0);
+
+		// Vertex shader data
+		struct ShadowVSData
+		{
+			DirectX::XMFLOAT4X4 world;
+			DirectX::XMFLOAT4X4 view;
+			DirectX::XMFLOAT4X4 proj;
+		};
+
+		ShadowVSData shadowVsData = {};
+		shadowVsData.view = lightViewMatrix;
+		shadowVsData.proj = lightProjectionMatrix;
+
+		// Loop and draw all entities
+		for (auto& entity : entityVec)
+		{
+			shadowVsData.world = entity->GetTransform().GetWorldMatrix();
+			FillAndBindNextConstantBuffer(
+				&shadowVsData,
+				sizeof(ShadowVSData),
+				D3D11_VERTEX_SHADER,
+				0);
+
+			entity->DrawNoMaterial(deltaTime);
+		}
+
+		// Reset pipeline
+		viewport.Width = (float)Window::Width();
+		viewport.Height = (float)Window::Height();
+		Graphics::Context->RSSetViewports(1, &viewport);
+		Graphics::Context->OMSetRenderTargets(
+			1,
+			Graphics::BackBufferRTV.GetAddressOf(),
+			Graphics::DepthBufferDSV.Get());
+
+		// Reset rasterizer state
+		Graphics::Context->RSSetState(0);
+	}
+
 	// Draw geometry
-	for (unsigned int i = 0; i < entityVec.size(); ++i)
+	for(auto& entity : entityVec)
 	{
 		// Set vertex shader data
 		VertexShaderData vsData{};
-		vsData.WorldMatrix = entityVec[i]->GetTransform().GetWorldMatrix();
-		vsData.WorldInverseTransposeMatrix = entityVec[i]->GetTransform().GetWorldInverseTransposeMatrix();
+		vsData.WorldMatrix = entity->GetTransform().GetWorldMatrix();
+		vsData.WorldInverseTransposeMatrix = entity->GetTransform().GetWorldInverseTransposeMatrix();
 		vsData.ViewMatrix = cameraVec[activeCameraIndex]->GetViewMatrix();
 		vsData.ProjectionMatrix = cameraVec[activeCameraIndex]->GetProjectionMatrix();
+		vsData.LightViewMatrix = lightViewMatrix;
+		vsData.LightProjectionMatrix = lightProjectionMatrix;
 
 		FillAndBindNextConstantBuffer(
 			&vsData,
@@ -654,9 +788,9 @@ void Game::Draw(float deltaTime, float totalTime)
 
 		// Set pixel shader data
 		PixelShaderData psData{};
-		psData.UVScale = entityVec[i]->GetMaterial()->GetUVScale();
-		psData.UVOffset = entityVec[i]->GetMaterial()->GetUVOffset();
-		psData.ColorTint = entityVec[i]->GetMaterial()->GetColorTint();
+		psData.UVScale = entity->GetMaterial()->GetUVScale();
+		psData.UVOffset = entity->GetMaterial()->GetUVOffset();
+		psData.ColorTint = entity->GetMaterial()->GetColorTint();
 		psData.CameraPosition = cameraVec[activeCameraIndex]->GetPosition();
 		psData.TotalTime = totalTime;
 		for (unsigned int i = 0; i < 5; ++i)
@@ -671,10 +805,18 @@ void Game::Draw(float deltaTime, float totalTime)
 			0);
 
 		// Bind textures and samplers to pipeline
-		entityVec[i]->GetMaterial()->BindTexturesAndSamplers();
+		entity->GetMaterial()->BindTexturesAndSamplers();
+
+		// Bind shadow map to pipeline
+		Graphics::Context->PSSetShaderResources(entity->GetMaterial()->GetTextureCount(), 1, shadowSRV.GetAddressOf());
+		Graphics::Context->PSSetSamplers(1, 1, shadowSampler.GetAddressOf());
 
 		// Draw entity
-		entityVec[i]->Draw(deltaTime);
+		entity->Draw(deltaTime);
+
+		// Unbind shadow map from shader resources (can't be depth map and texture simultaneously)
+		ID3D11ShaderResourceView* nullSRVs[64] = {};
+		Graphics::Context->PSSetShaderResources(entity->GetMaterial()->GetTextureCount(), 64, nullSRVs);
 	}
 
 	// Draw skybox
@@ -684,15 +826,21 @@ void Game::Draw(float deltaTime, float totalTime)
 		vsData.ViewMatrix = cameraVec[activeCameraIndex]->GetViewMatrix();
 		vsData.ProjectionMatrix = cameraVec[activeCameraIndex]->GetProjectionMatrix();
 
-		FillAndBindNextConstantBuffer(&vsData, sizeof(SkyVertexShaderData), D3D11_VERTEX_SHADER, 0);
+		FillAndBindNextConstantBuffer(
+			&vsData, 
+			sizeof(SkyVertexShaderData), 
+			D3D11_VERTEX_SHADER, 
+			0);
 
 		// Draw
 		skybox->Draw(totalTime);
 	}
 
 	// Draw ImGui
-	ImGui::Render();	// Turns the frame's UI into tris to be rendered
-	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());	// Draw to the screen
+	{
+		ImGui::Render();	// Turns the frame's UI into tris to be rendered
+		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());	// Draw to the screen
+	}
 
 	// Frame end
 	// - These should happen exactly ONCE PER FRAME
@@ -713,9 +861,9 @@ void Game::Draw(float deltaTime, float totalTime)
 }
 
 void Game::FillAndBindNextConstantBuffer(
-	void* data, 
-	unsigned int dataSizeInBytes, 
-	D3D11_SHADER_TYPE shaderType, 
+	void* data,
+	unsigned int dataSizeInBytes,
+	D3D11_SHADER_TYPE shaderType,
 	unsigned int registerSlot)
 {
 	// Reserve space adhering to the 256 byte chunk requirement
@@ -770,6 +918,28 @@ void Game::FillAndBindNextConstantBuffer(
 
 	// Offset for the next call
 	cbHeapOffsetInBytes += reservationSize;
+}
+
+void Game::CreateShadowViewMat()
+{
+	DirectX::XMVECTOR lightDirection = XMLoadFloat3(&lights[shadowCastingLightIndex].Direction);
+	DirectX::XMMATRIX lightView = XMMatrixLookToLH(
+		-lightDirection * 20,		// Position backing up 20 units from origin
+		lightDirection,				// Light direction
+		XMVectorSet(0, 1, 0, 0));	// Up world vector
+
+	DirectX::XMStoreFloat4x4(&lightViewMatrix, lightView);
+}
+
+void Game::CreateShadowProjMat()
+{
+	DirectX::XMMATRIX lightProj = XMMatrixOrthographicLH(
+		lightProjectionSize,
+		lightProjectionSize,
+		1.0f,
+		100.0f);
+
+	DirectX::XMStoreFloat4x4(&lightProjectionMatrix, lightProj);
 }
 
 // Pass ImGui new frame information at the start of update
@@ -853,7 +1023,7 @@ void Game::ImGuiBuildUI()
 			{
 				// UV scale
 				XMFLOAT2 uvScale = materialVec[i]->GetUVScale();
-				float scaleArray[2] = {uvScale.x, uvScale.y};
+				float scaleArray[2] = { uvScale.x, uvScale.y };
 				ImGui::DragFloat2(std::string("UV Scale##" + std::to_string(i)).c_str(), scaleArray, 0.01f, 0.1f, 10.0f);
 				materialVec[i]->SetUVScale(XMFLOAT2(scaleArray));
 
@@ -946,7 +1116,7 @@ void Game::ImGuiBuildUI()
 				// Type
 				int type = lights[i].Type;
 				ImGui::Text(std::string("Type: " + std::to_string(type)).c_str());
-				
+
 				// Color
 				float colorTemp[3] = { lights[i].Color.x, lights[i].Color.y, lights[i].Color.z };
 				ImGui::ColorEdit3(std::string("Color##" + std::to_string(i)).c_str(), colorTemp, ImGuiColorEditFlags_NoInputs);
@@ -964,81 +1134,19 @@ void Game::ImGuiBuildUI()
 		ImGui::TreePop();
 	}
 
+	// Shadow map
+	if (ImGui::TreeNode("Shadow Map"))
+	{
+		ImGui::Text("Change Resolution");
+
+		ImGui::Image(shadowSRV.Get(), ImVec2(256, 256));
+
+		ImGui::TreePop();
+	}
+
 	// End ImGui creation
 	ImGui::End();
 }
-
-/*
-// --------------------------------------------------------
-// Loads shaders from compiled shader object (.cso) files
-// and also created the Input Layout that describes our
-// vertex data to the rendering pipeline.
-// - Input Layout creation is done here because it must
-//    be verified against vertex shader byte code
-// - We'll have that byte code already loaded below
-// --------------------------------------------------------
-void Game::LoadShaders()
-{
-	// BLOBs (or Binary Large OBjects) for reading raw data from external files
-	// - This is a simplified way of handling big chunks of external data
-	// - Literally just a big array of bytes read from a file
-	ID3DBlob* pixelShaderBlob;
-	ID3DBlob* vertexShaderBlob;
-
-	// Loading shaders
-	//  - Visual Studio will compile our shaders at build time
-	//  - They are saved as .cso (Compiled Shader Object) files
-	//  - We need to load them when the application starts
-	{
-		// Read our compiled shader code files into blobs
-		// - Essentially just "open the file and plop its contents here"
-		// - Uses the custom FixPath() helper from Helpers.h to ensure relative paths
-		// - Note the "L" before the string - this tells the compiler the string uses wide characters
-		D3DReadFileToBlob(FixPath(L"PixelShader.cso").c_str(), &pixelShaderBlob);
-		D3DReadFileToBlob(FixPath(L"VertexShader.cso").c_str(), &vertexShaderBlob);
-
-		// Create the actual Direct3D shaders on the GPU
-		Graphics::Device->CreatePixelShader(
-			pixelShaderBlob->GetBufferPointer(),	// Pointer to blob's contents
-			pixelShaderBlob->GetBufferSize(),		// How big is that data?
-			0,										// No classes in this shader
-			pixelShader.GetAddressOf());			// Address of the ID3D11PixelShader pointer
-
-		Graphics::Device->CreateVertexShader(
-			vertexShaderBlob->GetBufferPointer(),	// Get a pointer to the blob's contents
-			vertexShaderBlob->GetBufferSize(),		// How big is that data?
-			0,										// No classes in this shader
-			vertexShader.GetAddressOf());			// The address of the ID3D11VertexShader pointer
-	}
-
-	// Create an input layout
-	//  - This describes the layout of data sent to a vertex shader
-	//  - In other words, it describes how to interpret data (numbers) in a vertex buffer
-	//  - Doing this NOW because it requires a vertex shader's byte code to verify against!
-	//  - Luckily, we already have that loaded (the vertex shader blob above)
-	{
-		D3D11_INPUT_ELEMENT_DESC inputElements[2] = {};
-
-		// Set up the first element - a position, which is 3 float values
-		inputElements[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;				// Most formats are described as color channels; really it just means "Three 32-bit floats"
-		inputElements[0].SemanticName = "POSITION";							// This is "POSITION" - needs to match the semantics in our vertex shader input!
-		inputElements[0].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// How far into the vertex is this?  Assume it's after the previous element
-
-		// Set up the second element - a color, which is 4 more float values
-		inputElements[1].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;			// 4x 32-bit floats
-		inputElements[1].SemanticName = "COLOR";							// Match our vertex shader input!
-		inputElements[1].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;	// After the previous element
-
-		// Create the input layout, verifying our description against actual shader code
-		Graphics::Device->CreateInputLayout(
-			inputElements,							// An array of descriptions
-			2,										// How many elements in that array?
-			vertexShaderBlob->GetBufferPointer(),	// Pointer to the code of a shader that uses this layout
-			vertexShaderBlob->GetBufferSize(),		// Size of the shader code that uses this layout
-			inputLayout.GetAddressOf());			// Address of the resulting ID3D11InputLayout pointer
-	}
-}
-*/
 
 //// Translation
 //XMMATRIX trMat = XMMatrixTranslation((float)sin(totalTime), 0, 0);

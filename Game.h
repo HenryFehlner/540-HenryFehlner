@@ -31,7 +31,6 @@ private:
 	Light lights[5];
 
 	// Initialization helper methods - feel free to customize, combine, remove, etc.
-	//void LoadShaders();
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> LoadVertexShader(std::wstring shaderPath);
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> LoadPixelShader(std::wstring shaderPath);
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> LoadInputLayout(ID3DBlob* vertexShaderBlob);
@@ -39,6 +38,7 @@ private:
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> skyVertexShader;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> shadowVertexShader;
 
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> basicPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> debugUVsPixelShader;
@@ -135,4 +135,18 @@ private:
 	
 	// Skybox
 	std::shared_ptr<Skybox> skybox;
+
+	// Shadow data
+	Microsoft::WRL::ComPtr<ID3D11DepthStencilView> shadowDSV;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> shadowSRV;
+	Microsoft::WRL::ComPtr<ID3D11RasterizerState> shadowRasterizer;
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> shadowSampler;
+	DirectX::XMFLOAT4X4 lightViewMatrix;
+	DirectX::XMFLOAT4X4 lightProjectionMatrix;
+	unsigned int shadowCastingLightIndex;
+	unsigned int shadowMapRes;
+	float lightProjectionSize;
+
+	void CreateShadowViewMat();
+	void CreateShadowProjMat();
 };

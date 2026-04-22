@@ -12,6 +12,7 @@ public:
 	~Entity();
 
 	void Draw(float deltaTime);
+	void DrawNoMaterial(float deltaTime);
 
 	// Setters
 	void SetMaterial(std::shared_ptr<Material> pMaterial);

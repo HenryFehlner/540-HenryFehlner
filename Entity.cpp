@@ -20,6 +20,12 @@ void Entity::Draw(float deltaTime)
 	meshPtr->Draw(deltaTime);
 }
 
+void Entity::DrawNoMaterial(float deltaTime)
+{
+	// Draw the mesh
+	meshPtr->Draw(deltaTime);
+}
+
 // Setters
 void Entity::SetMaterial(std::shared_ptr<Material> pMaterial)
 {

@@ -3,11 +3,12 @@
 // Constant buffer
 cbuffer ExternalData : register(b0)
 {
-    //float4 colorTint;
     matrix worldMatrix;	// matrix is always 4x4, or you can do float4x4
     matrix worldInverseTransposeMatrix;
     matrix viewMatrix;
     matrix projectionMatrix;
+    matrix lightViewMatrix;
+    matrix lightProjectionMatrix;
 };
 
 // --------------------------------------------------------
@@ -39,6 +40,10 @@ VertexToPixel main(VertexShaderInput input)
     // Transform tangent
     output.tangent = mul((float3x3) worldMatrix, input.tangent);
     output.tangent = normalize(output.tangent);
+    
+    // Shadow map calculation
+    matrix shadowWVP = mul(lightProjectionMatrix, mul(lightViewMatrix, worldMatrix));
+    output.shadowMapPos = mul(shadowWVP, float4(input.localPosition, 1.0));
 
 	// Return struct
 	return output;

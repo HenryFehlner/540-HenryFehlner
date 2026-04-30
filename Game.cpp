@@ -22,6 +22,7 @@ using namespace DirectX;
 
 // ImGui variables
 static float bgColor[4] = { 0.4f, 0.6f, 0.75f, 0.0f };
+static float testColor[4] = { 0.2f, 0.2f, 0.2f, 0.0f };
 static int sliderVal = 0;
 static float dragVal = 0.0;
 const int listItems[5] = { 10, 20, 30, 40, 50 };
@@ -97,6 +98,7 @@ Game::Game()
 		vertexShader = LoadVertexShader(L"VertexShader.cso");
 		skyVertexShader = LoadVertexShader(L"SkyVertexShader.cso");
 		shadowVertexShader = LoadVertexShader(L"ShadowMapVS.cso");
+		ppVertexShader = LoadFsVertexShader(L"PostProcessVS.cso");
 
 		// Pixel shaders
 		basicPixelShader = LoadPixelShader(L"PixelShader.cso");
@@ -105,6 +107,7 @@ Game::Game()
 		customPixelShader = LoadPixelShader(L"CustomPS.cso");
 		combinedPixelShader = LoadPixelShader(L"CombinedPS.cso");
 		skyPixelShader = LoadPixelShader(L"SkyPixelShader.cso");
+		ppBlurPixelShader = LoadPixelShader(L"PostProcessBlurPS.cso");
 	}
 
 	// Set initial graphics API state
@@ -117,7 +120,7 @@ Game::Game()
 		// Ensure the pipeline knows how to interpret all the numbers stored in
 		// the vertex buffer. For this course, all of your vertices will probably
 		// have the same layout, so we can just set this once at startup.
-		Graphics::Context->IASetInputLayout(inputLayout.Get());
+		Graphics::Context->IASetInputLayout(renderInputLayout.Get());
 
 		// Set the active vertex and pixel shaders
 		//  - Once you start applying different shaders to different objects,
@@ -560,6 +563,24 @@ Game::Game()
 		lightProjectionSize = 15.0;
 		CreateShadowProjMat();
 	}
+
+	// Post processes
+	{
+		// Sampler state
+		D3D11_SAMPLER_DESC ppSampDesc = {};
+		ppSampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+		ppSampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+		ppSampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+		ppSampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+		ppSampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+		Graphics::Device->CreateSamplerState(&ppSampDesc, ppSampler.GetAddressOf());
+
+		CreateFullscreenRTVAndSRV();
+
+		// Blur data
+		blurRadius = 0;
+		aberrationAmount = 0.003f;
+	}
 }
 
 
@@ -594,7 +615,7 @@ Microsoft::WRL::ComPtr<ID3D11VertexShader> Game::LoadVertexShader(std::wstring s
 		tempVertexShader.GetAddressOf());			// The address of the ID3D11VertexShader pointer
 
 	// Create input layout
-	inputLayout = LoadInputLayout(vertexShaderBlob);
+	renderInputLayout = LoadInputLayout(vertexShaderBlob);
 
 	return tempVertexShader;
 }
@@ -656,16 +677,108 @@ Microsoft::WRL::ComPtr<ID3D11InputLayout> Game::LoadInputLayout(ID3DBlob* vertex
 	return tempInputLayout;
 }
 
+
+Microsoft::WRL::ComPtr<ID3D11VertexShader> Game::LoadFsVertexShader(std::wstring shaderPath)
+{
+	// Temporary vertex shader pointer
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> tempVertexShader;
+
+	// Read compiled shader code file into blob
+	ID3DBlob* vertexShaderBlob;
+	D3DReadFileToBlob(FixPath(shaderPath).c_str(), &vertexShaderBlob);
+
+	// Create the actual Direct3D shader on the GPU
+	Graphics::Device->CreateVertexShader(
+		vertexShaderBlob->GetBufferPointer(),	// Get a pointer to the blob's contents
+		vertexShaderBlob->GetBufferSize(),		// How big is that data?
+		0,										// No classes in this shader
+		tempVertexShader.GetAddressOf());			// The address of the ID3D11VertexShader pointer
+
+	// Create input layout
+	fsTriInputLayout = LoadFsInputLayout(vertexShaderBlob);
+
+	return tempVertexShader;
+}
+
+Microsoft::WRL::ComPtr<ID3D11InputLayout> Game::LoadFsInputLayout(ID3DBlob* vertexShaderBlob)
+{
+	// Temporary input layout pointer
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> tempInputLayout;
+
+	D3D11_INPUT_ELEMENT_DESC inputElements[1] = {};
+
+	// Set up id input element
+	inputElements[0].Format = DXGI_FORMAT_R32_UINT;
+	inputElements[0].SemanticName = "SV_VertexID";
+	inputElements[0].AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+
+	// Create the input layout, verifying our description against actual shader code
+	Graphics::Device->CreateInputLayout(
+		inputElements,							// An array of descriptions
+		1,										// How many elements in that array?
+		vertexShaderBlob->GetBufferPointer(),	// Pointer to the code of a shader that uses this layout
+		vertexShaderBlob->GetBufferSize(),		// Size of the shader code that uses this layout
+		tempInputLayout.GetAddressOf());		// Address of the resulting ID3D11InputLayout pointer
+
+	return tempInputLayout;
+}
+
+void Game::CreateFullscreenRTVAndSRV()
+{
+	// Reset resources
+	ppRTV.Reset();
+	ppSRV.Reset();
+
+	// Recreate resources
+	// Texture description
+	D3D11_TEXTURE2D_DESC textDesc = {};
+	textDesc.Width = Window::Width();
+	textDesc.Height = Window::Height();
+	textDesc.ArraySize = 1;
+	textDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+	textDesc.CPUAccessFlags = 0;
+	textDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	textDesc.MipLevels = 1;
+	textDesc.MiscFlags = 0;
+	textDesc.SampleDesc.Count = 1;
+	textDesc.SampleDesc.Quality = 0;
+	textDesc.Usage = D3D11_USAGE_DEFAULT;
+
+	// Create texture resource
+	Microsoft::WRL::ComPtr<ID3D11Texture2D> ppTexture;
+	Graphics::Device->CreateTexture2D(&textDesc, 0, ppTexture.GetAddressOf());
+
+	// Create render target view
+	D3D11_RENDER_TARGET_VIEW_DESC rtvDesc = {};
+	rtvDesc.Format = textDesc.Format;
+	rtvDesc.Texture2D.MipSlice = 0;
+	rtvDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
+	Graphics::Device->CreateRenderTargetView(
+		ppTexture.Get(),
+		&rtvDesc,
+		ppRTV.ReleaseAndGetAddressOf());
+
+	// Create shader resource view
+	Graphics::Device->CreateShaderResourceView(
+		ppTexture.Get(),
+		0,
+		ppSRV.ReleaseAndGetAddressOf());
+}
+
 // --------------------------------------------------------
 // Handle resizing to match the new window size
 //  - Eventually, we'll want to update our 3D camera
 // --------------------------------------------------------
 void Game::OnResize()
 {
+	// Update camera projection matrices
 	for (unsigned int i = 0; i < cameraVec.size(); ++i)
 	{
 		cameraVec[i]->UpdateProjectionMatrix(Window::AspectRatio());
 	}
+
+	// Update fullscreen texture resources
+	CreateFullscreenRTVAndSRV();
 }
 
 // --------------------------------------------------------
@@ -703,6 +816,15 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Clear the back buffer (erase what's on screen) and depth buffer
 		Graphics::Context->ClearRenderTargetView(Graphics::BackBufferRTV.Get(), bgColor);
 		Graphics::Context->ClearDepthStencilView(Graphics::DepthBufferDSV.Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+		// Set correct input layout
+		Graphics::Context->IASetInputLayout(renderInputLayout.Get());
+
+		// Clear render target(s)
+		Graphics::Context->ClearRenderTargetView(ppRTV.Get(), testColor);
+
+		// Swap render target
+		Graphics::Context->OMSetRenderTargets(1, ppRTV.GetAddressOf(), Graphics::DepthBufferDSV.Get());
 	}
 
 	// Shadow map render
@@ -760,8 +882,8 @@ void Game::Draw(float deltaTime, float totalTime)
 		viewport.Height = (float)Window::Height();
 		Graphics::Context->RSSetViewports(1, &viewport);
 		Graphics::Context->OMSetRenderTargets(
-			1,
-			Graphics::BackBufferRTV.GetAddressOf(),
+			1, 
+			ppRTV.GetAddressOf(), 
 			Graphics::DepthBufferDSV.Get());
 
 		// Reset rasterizer state
@@ -835,6 +957,41 @@ void Game::Draw(float deltaTime, float totalTime)
 		// Draw
 		skybox->Draw(totalTime);
 	}
+
+	// Post processes
+	{
+		// Set correct input layout
+		Graphics::Context->IASetInputLayout(fsTriInputLayout.Get());
+
+		// Restore back buffer (no need for depth buffer yet)
+		Graphics::Context->OMSetRenderTargets(1, Graphics::BackBufferRTV.GetAddressOf(), 0);
+
+		// Activate shaders and bind resources
+		Graphics::Context->VSSetShader(ppVertexShader.Get(), 0, 0);
+		Graphics::Context->PSSetShader(ppBlurPixelShader.Get(), 0, 0);
+		Graphics::Context->PSSetShaderResources(0, 1, ppSRV.GetAddressOf());
+		Graphics::Context->PSSetSamplers(0, 1, ppSampler.GetAddressOf());
+		
+		// Set cbuffer data
+		BlurData blurData = {};
+		blurData.BlurRadius = blurRadius;
+		blurData.PixelWidth = 1.0f / (float)Window::Width();
+		blurData.PixelHeight = 1.0f / (float)Window::Height();
+		blurData.AberrationAmount = aberrationAmount;
+
+		FillAndBindNextConstantBuffer(
+			&blurData,
+			sizeof(BlurData),
+			D3D11_PIXEL_SHADER,
+			0);
+
+		Graphics::Context->Draw(3, 0);
+
+		// Unbind post process SRV from shader resources (can't be depth map and texture simultaneously)
+		ID3D11ShaderResourceView* nullSRVs[64] = {};
+		Graphics::Context->PSSetShaderResources(0, 1, nullSRVs);
+	}
+	
 
 	// Draw ImGui
 	{
@@ -1140,6 +1297,27 @@ void Game::ImGuiBuildUI()
 		ImGui::Text("Change Resolution");
 
 		ImGui::Image(shadowSRV.Get(), ImVec2(256, 256));
+
+		ImGui::TreePop();
+	}
+
+	if (ImGui::TreeNode("Post Process Effects"))
+	{
+		// Blur
+		if (ImGui::TreeNode("Blur"))
+		{
+			ImGui::SliderInt("Blur Radius", &blurRadius, 0, 50);
+
+			ImGui::TreePop();
+		}
+
+		// Chromatic aberration
+		if (ImGui::TreeNode("Chromatic Aberration"))
+		{
+			ImGui::SliderFloat("Amount", &aberrationAmount, 0, 0.3f);
+
+			ImGui::TreePop();
+		}
 
 		ImGui::TreePop();
 	}

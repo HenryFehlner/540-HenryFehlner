@@ -35,6 +35,11 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> LoadPixelShader(std::wstring shaderPath);
 	Microsoft::WRL::ComPtr<ID3D11InputLayout> LoadInputLayout(ID3DBlob* vertexShaderBlob);
 
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> LoadFsVertexShader(std::wstring shaderPath);
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> LoadFsInputLayout(ID3DBlob* vertexShaderBlob);
+
+	void CreateFullscreenRTVAndSRV();
+
 	// Shaders and shader-related constructs
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> vertexShader;
 	Microsoft::WRL::ComPtr<ID3D11VertexShader> skyVertexShader;
@@ -47,7 +52,8 @@ private:
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> combinedPixelShader;
 	Microsoft::WRL::ComPtr<ID3D11PixelShader> skyPixelShader;
 
-	Microsoft::WRL::ComPtr<ID3D11InputLayout> inputLayout;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> renderInputLayout;
+	Microsoft::WRL::ComPtr<ID3D11InputLayout> fsTriInputLayout;
 
 	// ImGui update helper
 	void ImGuiNewFrameUpdate(float deltaTime);
@@ -146,7 +152,17 @@ private:
 	unsigned int shadowCastingLightIndex;
 	unsigned int shadowMapRes;
 	float lightProjectionSize;
-
 	void CreateShadowViewMat();
 	void CreateShadowProjMat();
+
+	// Shared post processes resources
+	Microsoft::WRL::ComPtr<ID3D11SamplerState> ppSampler;
+	Microsoft::WRL::ComPtr<ID3D11VertexShader> ppVertexShader;
+
+	// Blur post process
+	Microsoft::WRL::ComPtr<ID3D11PixelShader> ppBlurPixelShader;
+	Microsoft::WRL::ComPtr<ID3D11RenderTargetView> ppRTV;	// For rendering
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> ppSRV;	// For sampling
+	int blurRadius;
+	float aberrationAmount;
 };

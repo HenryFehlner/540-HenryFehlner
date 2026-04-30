@@ -37,3 +37,11 @@ struct SkyVertexShaderData
 
 	DirectX::XMFLOAT4X4 ProjectionMatrix;
 };
+
+struct BlurData
+{
+	int BlurRadius;
+	float PixelWidth;
+	float PixelHeight;
+	float AberrationAmount;
+};

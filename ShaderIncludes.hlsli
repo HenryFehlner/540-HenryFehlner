@@ -37,6 +37,13 @@ struct VertexToPixelSky
     float3 sampleDir : DIRECTION;
 };
 
+// Used in post process vertex shader
+struct VertexToPixelPostProcess
+{
+    float4 position : SV_POSITION;
+    float2 uv : TEXCOORD0;
+};
+
 // Light struct
 struct Light
 {
